@@ -28,7 +28,7 @@ namespace EVCS
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
             check.Start();
-
+            
             shell();
 
         }
@@ -46,25 +46,25 @@ namespace EVCS
             {
                 for(int i=0;i<200;i++)
                 {
-                    IPList ip = cloud.iplist[i];
+                    IPList ip = cloud.Data.iplist[i];
                     if (ip.ID != null)
                     {
                         if (!DeviceList[i])
                         {
                             DeviceList[i] = true;
 
-                            DeviceC[i] = new PointCloudDeviceC(ref cloud.Data.Devicedata[i], ref cloud);
+                            DeviceC[i] = new PointCloudDeviceC(ref cloud.Data.Devicedata[i], ref cloud,i);
                         }
                     }
                     else if (DeviceList[i]) { DeviceList[i] = false;Console.WriteLine(cloud.Data.Devicedata[i].ID); }
 
-                    ip = cloud.UserList[i];
+                    ip = cloud.Data.UserList[i];
                     if (ip.ID != null)
                     {
                         if (!UserList[i])
                         {
                             UserList[i] = true;
-                            UserC[i] = new PointCloudUserC(ref cloud.Data.Userdata[i], ref cloud,ref cc);
+                            UserC[i] = new PointCloudUserC(ref cloud.Data.Userdata[i], ref cloud,ref cc,i);
                         }
                     }
                     else if (UserList[i]) UserList[i] = false;
@@ -76,8 +76,8 @@ namespace EVCS
 
         public void shell()
         {
-            var Devicelist = from r in cloud.iplist where r.ID != null orderby r.ID descending select r;
-            var Userlist = from r in cloud.UserList where r.ID != null orderby r.ID descending select r;
+            var Devicelist = from r in cloud.Data.iplist where r.ID != null orderby r.ID descending select r;
+            var Userlist = from r in cloud.Data.UserList where r.ID != null orderby r.ID descending select r;
             while (true)
             {
                 try

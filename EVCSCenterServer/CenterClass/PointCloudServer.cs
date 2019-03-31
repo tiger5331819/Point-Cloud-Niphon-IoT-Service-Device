@@ -16,17 +16,12 @@ namespace EVCS
         public DeviceData Newdata = null;
         public volumecontrol newvolumecontrol;
         public NetIP ip;
-        public string IP;
+        public string IP=null;
         public Boolean Live = false;
 
         public DeviceData()
         {
             ip = new NetIP();
-        }
-        public bool newdatachange()
-        {
-            if (flag)return true;
-            else return false;
         }
     }
 
@@ -43,31 +38,32 @@ namespace EVCS
             DeviceID = null;
             ip = new NetIP();
         }
-        public bool newdatachange()
-        {
-            if (flag)
-                return true;
-            else return false;
-        }
     }
 
-    public class ServerData : TypeData
+    public class ServerData
     {
-        public NetIP ip;
+        public IPList[] iplist = new IPList[200];
+        public IPList[] UserList = new IPList[200];
+        public DeviceData []Devicedata=new DeviceData[100];
+        public UserData []Userdata=new UserData[100];
+        public NetIP ip=new NetIP();
+        public string ID;
 
         public ServerData()
         {
-            ip = new NetIP();
-            Devicedata = new DeviceData[100];
-            Userdata = new UserData[100];
-            for(int i=0;i<100;i++)
+            for (int i=0;i<100;i++)
             {
                 Devicedata[i] = null;
                 Userdata[i] = null;
+
+                iplist[i].ID = null;
+                iplist[i].IP = null;
+
+                UserList[i].ID = null;
+                UserList[i].IP = null;
             }            
         }
-        public DeviceData []Devicedata;
-        public UserData []Userdata;
+
 
     }
 
@@ -110,10 +106,9 @@ namespace EVCS
                 Console.WriteLine("服务器开始监听");
 
                 //这个线程用于实例化socket，每当一个子端connect时，new一个socket对象并保存到相关数据集合
-                //Thread thread = new Thread(AcceptInfo);
-                //thread.IsBackground = true;
-                //thread.Start(socket);
-                AcceptInfo(socket);
+                Thread acceptInfo = new Thread(AcceptInfo);
+                acceptInfo.IsBackground = true;
+                acceptInfo.Start(socket);
             }
             catch (Exception ex)
             {
@@ -138,7 +133,6 @@ namespace EVCS
 
                     string point = tSocket.RemoteEndPoint.ToString();
                     Console.WriteLine(point + "连接成功！");
-                    dic.Add(point, tSocket);
      
                     Thread th = new Thread(ReceiveMsg);
                     th.IsBackground = true;
@@ -167,24 +161,22 @@ namespace EVCS
                 {
                     PackageToUserData packageToUserData = new PackageToUserData(NewUser);
                     int i = 0;
-                    foreach (IPList ip in cloud.UserList)
+                    foreach (IPList ip in Data.UserList)
                     {              
                         if (ip.ID == null)
                         {
                             Data.Userdata[i] = packageToUserData(package);
                             Data.Userdata[i].IP = client.RemoteEndPoint.ToString();
                             Data.Userdata[i].Live = true;
+                            Data.Userdata[i].socket = client;
 
-                            cloud.UserList[i].ID = Data.Userdata[i].ID;
-                            cloud.UserList[i].IP = client.RemoteEndPoint.ToString();
-                            Thread thread = new Thread(UserReceive);
-                            thread.IsBackground = true;
-                            thread.Start(client);
+                            Data.UserList[i].ID = Data.Userdata[i].ID;
+                            Data.UserList[i].IP = client.RemoteEndPoint.ToString();                           
                             break;
                         }
                         i++;
                     }
-                    Send(CreatIPListToPackage(Messagetype.codeus, cloud.iplist), client.RemoteEndPoint.ToString());
+                    Send(CreatIPListToPackage(Messagetype.codeus, Data.iplist), client);
                 }
                 else
                 {
@@ -193,7 +185,7 @@ namespace EVCS
                         PackageToDeviceData packageToDeviceData = new PackageToDeviceData(NewDevice);
 
                         int i = 0;
-                        foreach (IPList ip in cloud.iplist)
+                        foreach (IPList ip in Data.iplist)
                         {
 
                             if (ip.ID == null)
@@ -201,13 +193,14 @@ namespace EVCS
                                 Data.Devicedata[i] = packageToDeviceData(package);
                                 Data.Devicedata[i].IP= client.RemoteEndPoint.ToString();
                                 Data.Devicedata[i].Live = true;
+                                Data.Devicedata[i].socket = client;
 
-                                cloud.iplist[i].ID = Data.Devicedata[i].ID;
-                                cloud.iplist[i].IP = client.RemoteEndPoint.ToString();
+                                Data.iplist[i].ID = Data.Devicedata[i].ID;
+                                Data.iplist[i].IP = client.RemoteEndPoint.ToString();
 
-                                Thread thread = new Thread(DeviceReceive);
-                                thread.IsBackground = true;
-                                thread.Start(client);
+                                //Thread thread = new Thread(DeviceReceive);
+                                //thread.IsBackground = true;
+                                //thread.Start(client);
                                 break;
                             }
                             i++;
@@ -217,145 +210,10 @@ namespace EVCS
 
             }
             ipinfo();
-            //int flagtest = 0;
-            //foreach(IPList ip in cloud.iplist)
-            //{
-            //    if(ip.ID!=null)
-            //    {
-            //        Console.WriteLine(cloud.iplist[flagtest].ID);
-            //        WriteLine(cloud.iplist[flagtest].IP);
-            //        WriteLine(Data.Devicedata[flagtest].ID);
-            //        flagtest++;
-            //    }
-
-            //}
-        }
-        /// <summary>
-        /// 用户信息接收
-        /// </summary>
-        /// <param name="o"></param>
-        void UserReceive(object o)
-        {
-            Socket client = o as Socket;
-            //User定位
-            int UserID = 0;
-            foreach (IPList ip in cloud.UserList)
-            {
-                if (ip.IP == client.RemoteEndPoint.ToString()) break;
-                UserID++;
-            }
-            //接受用户数据
-            while (true)
-            {
-                try
-                {
-                    byte[] buffer = new byte[1024 * 1024];
-                    int n = client.Receive(buffer);
-                    Package package = BytesToPackage(buffer);
-
-                    if(package.message==Messagetype.codeus)
-                    {
-                        string receive = Encoding.UTF8.GetString(package.data, 0, package.data.Length);
-                        if (receive == "-1")
-                        {
-                            Send(CreatIPListToPackage(Messagetype.codeus, cloud.iplist), client.RemoteEndPoint.ToString());
-                            Console.WriteLine("updatelist");
-                        }                         
-                        else Data.Userdata[UserID].DeviceID = receive;
-                    }
-                    else
-                    switch (package.message)
-                    {
-                        case Messagetype.package:
-                            PackageToData packageToData = new PackageToData(NewUserData);
-                            packageToData(package, UserID); break;
-                        case Messagetype.order:
-                            PackageToData carinfomessageToData = new PackageToData(NewCode);
-                            carinfomessageToData(package, UserID); break;
-                        case Messagetype.update:
-                            PackageToData updatemessage = new PackageToData(UpdateMessage);
-                            updatemessage(package, UserID); break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Data.Userdata[UserID].Live = false;
-                    cloud.UserList[UserID].ID = null;
-                    break;
-                }
-            }
-        }
-        /// <summary>
-        /// 设备信息接收
-        /// </summary>
-        /// <param name="o"></param>
-        void DeviceReceive(object o)
-        {
-            Socket client = o as Socket;
-            //Device定位
-            int DeviceID = 0;
-            foreach (IPList ip in cloud.iplist)
-            {
-                if (ip.IP == client.RemoteEndPoint.ToString()) break;
-                DeviceID++;
-            }
-            //接受设备数据
-            while (true)
-            {
-                try
-                {
-                    byte[] buffer = new byte[1024 * 1024];
-                    int n = client.Receive(buffer);
-                    Package package = BytesToPackage(buffer);
-
-                    switch (package.message)
-                    {
-                        case Messagetype.package: PackageToData2 packageToData = new PackageToData2(NewDeviceData);
-                                                  packageToData(package,DeviceID, client);break;
-                        case Messagetype.carinfomessage:PackageToData carinfomessageToData = new PackageToData(NewvolumeData);
-                                                        carinfomessageToData(package,DeviceID); break;
-                        case Messagetype.volumepackage:PackageToData volumepackageToData = new PackageToData(NewvolumeData);
-                                                       volumepackageToData(package, DeviceID); break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Data.Devicedata[DeviceID].Live = false;
-                    cloud.iplist[DeviceID].ID = null;
-                    break;
-                }
-            }
+            
         }
 
-        public override bool Send(Package package, string ip)
-        {
-            try
-            {
-                byte[] bytes = null;
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    BinaryFormatter bf = new BinaryFormatter();
-                    bf.Serialize(ms, package);
-                    ms.Flush();
-                    bytes = ms.ToArray();
-                }
-                dic[ip].Send(bytes, bytes.Length, 0);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-                return false;
-            }
-            return true;
-        }
-
-
-
-
-
-        public Package CreatIPListToPackage(Messagetype messagetype,IPList []ipl)
+        static public Package CreatIPListToPackage(Messagetype messagetype,IPList []ipl)
         {
             Package package = new Package();
             package.message = messagetype;
@@ -376,30 +234,6 @@ namespace EVCS
                 Console.WriteLine(ex.Message);
             }
             return package;
-        }
-
-        void NewCode(Package package,int UserID)
-        {
-            Data.Userdata[UserID].codemode = (Codemode)Convert.ToInt32(Encoding.UTF8.GetString(package.data, 0, package.data.Length));
-            Data.Userdata[UserID].messagetype = package.message;
-            Data.Userdata[UserID].flag = true;
-            Console.WriteLine(Data.Userdata[UserID].codemode);
-        }
-        void UpdateMessage(Package package,int UserID)
-        {
-            UserData data=new UserData();
-            using (MemoryStream ms = new MemoryStream())
-            {
-                ms.Write(package.data, 0, package.data.Length);
-                ms.Flush();
-                ms.Position = 0;
-                BinaryFormatter bf = new BinaryFormatter();
-                data = (UserData)bf.Deserialize(ms);
-            }
-            Data.Userdata[UserID].messagetype = package.message;
-            Data.Userdata[UserID].configtime = data.configtime;
-            Data.Userdata[UserID].volume = data.volume;
-            Data.Userdata[UserID].flag = true;
         }
 
         UserData NewUser(Package package)
@@ -429,81 +263,7 @@ namespace EVCS
             return data;
         }
 
-        void NewDeviceData(Package package,int DeviceID,Socket o)
-        {
-            try
-            {
-                DeviceData data = new DeviceData();
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    ms.Write(package.data, 0, package.data.Length);
-                    ms.Flush();
-                    ms.Position = 0;
-                    BinaryFormatter bf = new BinaryFormatter();
-                    data= (DeviceData)bf.Deserialize(ms);
-                    Data.Devicedata[DeviceID].volume = data.volume;
-                    Data.Devicedata[DeviceID].messagetype = package.message;
-                    Data.Devicedata[DeviceID].flag = true;
-                    Data.Devicedata[DeviceID].IP = o.RemoteEndPoint.ToString();
-                    Data.Devicedata[DeviceID].Live = true;
-                }
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
-
-        }
-
-        void NewUserData(Package package, int UserID)
-        {
-            try
-            {
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    ms.Write(package.data, 0, package.data.Length);
-                    ms.Flush();
-                    ms.Position = 0;
-                    BinaryFormatter bf = new BinaryFormatter();
-
-                    Data.Userdata[UserID] = (UserData)bf.Deserialize(ms);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
-
-        }
-        /// <summary>
-        /// 更改体积等信息
-        /// </summary>
-        /// <param name="package"></param>
-        void  NewvolumeData(Package package,int DeviceID)
-        {
-            try
-            {
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    ms.Write(package.data, 0, package.data.Length);
-                    ms.Flush();
-                    ms.Position = 0;
-                    BinaryFormatter bf = new BinaryFormatter();
-
-                    Data.Devicedata[DeviceID].newvolumecontrol = (volumecontrol)bf.Deserialize(ms);
-
-                    Data.Devicedata[DeviceID].messagetype = package.message;
-                    Data.Devicedata[DeviceID].flag = true; 
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
-
-        }
-
-        public Package CreatCodeToPackage(Codemode codemode)
+       static public Package CreatCodeToPackage_ToDevice(Codemode codemode)
         {
             Package package = new Package();
             package.message = Messagetype.order;

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using EVCS.PointCloudControl;
 
 namespace EVCS
 {
@@ -12,14 +13,18 @@ namespace EVCS
         Special cloud;
         PointCloudDeviceC deviceC;
         PointCloudUserC userC;
+        PointCloudMailBox MailBox;
+        int UserID;
 
-        public PointCloudUserC(ref UserData d,ref Special s,ref PointCloudCC c)
+        public PointCloudUserC(ref UserData d,ref Special s,ref PointCloudCC c,int i)
         {
             data = d;
             cloud = s;
             cc = c;
             deviceC = null;
             userC = this;
+            MailBox = new UserMailBox(ref d, s.Data.iplist);
+            UserID = i;
 
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
@@ -28,19 +33,24 @@ namespace EVCS
 
         void CreateThreadToCheckData()
         {
-            while (data.Live)
+            async void Receive()
             {
-                if (data.newdatachange())
+                while(data.Live)
+                if (await MailBox.DOReceive())
                 {
                     switch (data.messagetype)
                     {
                         case Messagetype.order:orderTODO(); break;
                         case Messagetype.update:updateTODO();break;
                     }
-                    data.flag = false;
                 }
-                else Thread.Sleep(100);
-
+                     
+            }
+            Receive();
+            while (data.Live)
+            { 
+                if (!data.Live) cloud.Data.iplist[UserID].ID = null;
+                Thread.Sleep(400);
             }
         }
 
@@ -58,7 +68,7 @@ namespace EVCS
         {
             for(int i=0;i<200;i++)
             {
-                IPList ip = cloud.iplist[i];
+                IPList ip = cloud.Data.iplist[i];
                 if (ip.IP == data.DeviceID)
                 {
                     deviceC = cc.DeviceC[i];
@@ -84,8 +94,6 @@ namespace EVCS
         }
 
 
-
-
         public void UpdateVolume(volumecontrol v)
         {
             data.volume = v;
@@ -93,12 +101,11 @@ namespace EVCS
             if (SendMessage(Messagetype.volumepackage)) Console.WriteLine("发送成功给用户！");
             else Console.WriteLine("error！");
         }
-
         public bool SendMessage(Messagetype messagetype)
         {
-            if (cloud.cloudnet.Send(cloud.cloudnet.UserDataToPackage(data, messagetype), data.IP)) return true;
+            if (MailBox.Send(CenterServerNet.UserDataToPackage(data, messagetype))) return true;
             else return false;
         }
-        
+
     }
 }
