@@ -22,32 +22,16 @@ namespace EVCS
     public class Special
     {
         public ServerData Data;
-        public IPList[] iplist = new IPList[200];
-        public IPList[] UserList = new IPList[200];
-        string EVCSversion;
-        string Volumeversion;
+
+        string EVCSServerVersion;
         public string EVCSv
         {
-            get { return EVCSversion; }
-            set { EVCSversion = value; }
-        }
-        public string Volumev
-        {
-            get { return Volumeversion; }
-            set { Volumeversion = value; }
+            get { return EVCSServerVersion; }
+            set { EVCSServerVersion = value; }
         }
         public Special cloud;
         public CenterServerNet cloudnet;
      
-
-        public void showxml()
-        {
-            for (int i = 0; i < 3; i++)
-            {
-                Console.WriteLine(Data.configtime[i].time + Data.configtime[i].beginhour + Data.configtime[i].beginminute);
-                Console.WriteLine(Data.configtime[i].endhour + Data.configtime[i].endminute);
-            }
-        }
         /// <summary>
         /// 加载xml
         /// 子端结构体赋值为空
@@ -56,52 +40,15 @@ namespace EVCS
         public Special()
         {
             this.Data = new ServerData();
-            loadxml();
-            for (int i = 0; i < 20; i++)
-            {
-                iplist[i].ID = null;
-                iplist[i].IP = null;
-            }        
+            loadxml();   
             cloud = this;
             this.cloudnet = new CenterServerNet(ref Data,ref cloud);
         }
 
-        public int gethour(int a, bool flag)
-        {
-            if (flag) return Convert.ToInt32(Data.configtime[a].beginhour);
-            else return Convert.ToInt32(Data.configtime[a].endhour);
-        }
-        public string gethour(int a, bool flag, bool isstring)
-        {
-            if (flag) return Data.configtime[a].beginhour;
-            else return Data.configtime[a].endhour;
-        }
-        public int getminute(int a, bool flag)
-        {
-            if (flag) return Convert.ToInt32(Data.configtime[a].beginminute);
-            else return Convert.ToInt32(Data.configtime[a].endminute);
-        }
-        public string getminute(int a, bool flag, bool isstring)
-        {
-            if (flag) return Data.configtime[a].beginminute;
-            else return Data.configtime[a].endminute;
-        }
-        public bool sethour(int a, bool flag, string t)
-        {
-            if (flag) Data.configtime[a].beginhour = t;
-            else Data.configtime[a].endhour = t;
-            return true;
-        }
-        public bool setminute(int a, bool flag, string t)
-        {
-            if (flag) Data.configtime[a].beginminute = t;
-            else Data.configtime[a].endminute = t;
-            return true;
-        }
         public void loadxml()
         {
             //将XML文件加载进来
-            XDocument document = XDocument.Load("config.xml");
+            XDocument document = XDocument.Load("Serverconfig.xml");
             //获取到XML的根元素进行操作
             XElement root = document.Root;
 
@@ -109,10 +56,8 @@ namespace EVCS
             XElement ID = Device.Element("ID");
             Data.ID = ID.Value;
 
-            XElement version = Device.Element("EVCSversion");
-            EVCSversion = version.Value;
-            version = Device.Element("Volumeversion");
-            Volumeversion = version.Value;
+            XElement version = Device.Element("EVCSServerVersion");
+            EVCSServerVersion = version.Value;
 
             XElement NetLink = root.Element("NetLink");
             XElement IP = NetLink.Element("IP");
@@ -121,37 +66,15 @@ namespace EVCS
             XElement Point = IP.Element("serverpoint");
             Data.ip.Point = int.Parse(Point.Value);
 
-
-
-            //获取根元素下的所有子元素
-            IEnumerable<XElement> ele = root.Elements("time");
-            IEnumerable<XElement> enumerable = ele.Elements();
-            int i = 0;
-            foreach (XElement item in enumerable)
-            {
-                Data.configtime[i].time = item.Name.ToString();
-                XElement timefind = item.Element("beginhour");
-                Data.configtime[i].beginhour = timefind.Value;
-                timefind = item.Element("beginminute");
-                Data.configtime[i].beginminute = timefind.Value;
-                timefind = item.Element("endhour");
-                Data.configtime[i].endhour = timefind.Value;
-                timefind = item.Element("endminute");
-                Data.configtime[i].endminute = timefind.Value;
-                i++;
-            }
         }
         public void writexml()
         {
             //获取根节点对象
             XDocument document = new XDocument();
             XElement root = new XElement("EVCS");
-            XElement EVCSv = new XElement("EVCSversion");
-            EVCSv.Value = EVCSversion;
-            root.Add(EVCSv);
-            XElement version = new XElement("Volumeversion");
-            version.Value = Volumeversion;
-            root.Add(version);
+            XElement EVCSv = new XElement("EVCSServerVersion");
+            EVCSv.Value = EVCSServerVersion;
+            root.Add(EVCSv);           
 
             XElement NetLink = new XElement("NetLink");
             XElement IP = new XElement("IP");
@@ -159,20 +82,6 @@ namespace EVCS
             IP.SetElementValue("serverpoint", Data.ip.Point);
             NetLink.Add(IP);
             root.Add(NetLink);
-
-            XElement time = new XElement("time");
-
-            foreach (configtimexml x in Data.configtime)
-            {
-                XElement addtime = new XElement(x.time);
-                addtime.SetElementValue("beginhour", x.beginhour);
-                addtime.SetElementValue("beginminute", x.beginminute);
-                addtime.SetElementValue("endhour", x.endhour);
-                addtime.SetElementValue("endminute", x.endminute);
-                time.Add(addtime);
-            }
-
-            root.Add(time);
             root.Save("config.xml");
         }
 

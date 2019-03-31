@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using EVCS.PointCloudControl;
 
 namespace EVCS
 {
@@ -10,13 +11,17 @@ namespace EVCS
         Special cloud;
         DeviceData data;
         PointCloudUserC user;
+        PointCloudMailBox MailBox;
+        int DeviceID;
         public Queue<Codemode> order = new Queue<Codemode>();
 
-        public PointCloudDeviceC(ref DeviceData d, ref Special s)
+        public PointCloudDeviceC(ref DeviceData d, ref Special s,int i)
         {
             data = d;
             cloud = s;
             user = null;
+            DeviceID = i;
+            MailBox = new DeviceMailBox(ref d); 
 
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
@@ -26,21 +31,27 @@ namespace EVCS
         void CreateThreadToCheckData()
         {
             int sum = 0;
-            while (data.Live)
+            async void Receive()
             {
-                if (data.newdatachange())
+                while(data.Live)
+                if (await MailBox.DOReceive())
                 {
                     switch (data.messagetype)
                     {
-                        case Messagetype.carinfomessage: ChangeCarMessage(); break;
-                        case Messagetype.volumepackage: ChangeCarMessage(); break;
-                        case Messagetype.package: ChangeCarMessage(); break;
+                       case Messagetype.carinfomessage: ChangeCarMessage(); break;
+                       case Messagetype.volumepackage: ChangeCarMessage(); break;
+                       case Messagetype.package: ChangeCarMessage(); break;
                     }
-                    data.flag = false;
                 }
                 else {Thread.Sleep(100);  sum++; }
+            }
+            Receive();
+            while (data.Live)
+            {               
+                //Console.WriteLine("111");
+                if(!data.Live) cloud.Data.iplist[DeviceID].ID = null;
+
                 if (sum == 100) { SendCode(Codemode.monitor);sum = 0; }
-                
 
                 Codemode code;
                 if(order.TryDequeue(out code))
@@ -58,7 +69,6 @@ namespace EVCS
         void ChangeCarMessage()
         {
             data.volume = data.newvolumecontrol;
-            data.flag = false;
 
             Console.WriteLine(data.ID);
             Console.WriteLine(data.volume.carName);
@@ -71,7 +81,7 @@ namespace EVCS
         }
         public bool adduser(ref PointCloudUserC d, string devicename)
         {
-            foreach (IPList ip in cloud.iplist)
+            foreach (IPList ip in cloud.Data.iplist)
             {
                 if (ip.ID == devicename)
                 {
@@ -85,7 +95,8 @@ namespace EVCS
         {
             try
             {
-                user = null;               
+                user = null;
+                SendCode(Codemode.stopsendvolume);
             }
             catch (Exception ex)
             {
@@ -94,6 +105,7 @@ namespace EVCS
             }
             return true;
         }
+
         public void updatemessage(volumecontrol newvolume,configtimexml[] newconfig)
         {
             data.volume.carName = newvolume.carName; data.configtime = newconfig;
@@ -102,12 +114,12 @@ namespace EVCS
         }
        public bool SendMessage(Messagetype messagetype)
         {
-            if (cloud.cloudnet.Send(cloud.cloudnet.DeviceDataToPackage(data, messagetype), data.IP)) return true;
+            if (MailBox.Send(CenterServerNet.DeviceDataToPackage(data, messagetype))) return true;
             else return false;
         }
         public bool SendCode(Codemode code)
         {
-            if (cloud.cloudnet.Send(cloud.cloudnet.CreatCodeToPackage(code), data.IP)) return true;
+            if (MailBox.Send(CenterServerNet.CreatCodeToPackage_ToDevice(code))) return true;
             else return false;
         }
         bool SendUpdate(Messagetype messagetype=Messagetype.update)
@@ -118,7 +130,7 @@ namespace EVCS
                 Console.WriteLine("Orderqueue is not null.");
                 return false;
             }
-            if (cloud.cloudnet.Send(cloud.cloudnet.DeviceDataToPackage(data,messagetype), data.IP)) return true;
+            if (MailBox.Send(CenterServerNet.DeviceDataToPackage(data,messagetype))) return true;
             else return false;
         }
     }

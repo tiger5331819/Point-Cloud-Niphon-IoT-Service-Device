@@ -45,7 +45,6 @@ namespace EVCS
         public int Loadingrate;
         public string Endtime;
         public string Begintime;
-
     }
 
     public class CenterNetClass
@@ -54,9 +53,8 @@ namespace EVCS
         public  TypeNet typenet;
 
         public Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        public Dictionary<string, Socket> dic = new Dictionary<string, Socket>();
 
-        public bool Send(Package package)
+        public bool Send(Package package,Socket s)
         {
             try
             {
@@ -68,7 +66,7 @@ namespace EVCS
                     ms.Flush();
                     bytes = ms.ToArray();
                 }
-                socket.Send(bytes, bytes.Length, 0);
+                s.Send(bytes, bytes.Length, 0);
             }
             catch(Exception ex)
             {
@@ -77,16 +75,11 @@ namespace EVCS
             }
             return true;
         }
-        public virtual bool Send(Package package, string ip)
-        {
-            ///orrived
-            return true;
-        }
 
         public delegate Package CreateDataToPackage(Messagetype message);
         public delegate Package TypeDataToPackage(Package package, Messagetype messagetype);
 
-        public Package BytesToPackage(byte []buffer)
+       static public Package BytesToPackage(byte []buffer)
         {
             using (MemoryStream ms = new MemoryStream())
             {
@@ -100,7 +93,7 @@ namespace EVCS
         }
 
 
-        public Package DeviceDataToPackage(TypeData data, Messagetype messagetype = Messagetype.package)
+        static public Package DeviceDataToPackage(TypeData data, Messagetype messagetype = Messagetype.package)
         {
             Package package = new Package();
             package.data = null;
@@ -135,7 +128,7 @@ namespace EVCS
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public Package UserDataToPackage(TypeData data, Messagetype messagetype = Messagetype.package)
+        static public Package UserDataToPackage(TypeData data, Messagetype messagetype = Messagetype.package)
         {
             Package package = new Package();
             package.data = null;
@@ -190,8 +183,8 @@ namespace EVCS
             return package;
         }
 
-        public delegate void PackageToData(Package package,int DeviceID);
-        public delegate void PackageToData2(Package package, int DeviceID,Socket o);
+        
+
         public delegate DeviceData PackageToDeviceData(Package package);
         public delegate UserData PackageToUserData(Package package);
     }
@@ -204,9 +197,9 @@ namespace EVCS
        public configtimexml [] configtime;
        public volumecontrol volume;
 
-       public bool flag;
        public Messagetype messagetype;
        public Codemode codemode;
+       public Socket socket = null;
 
         public TypeData()
         {
