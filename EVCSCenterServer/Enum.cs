@@ -4,12 +4,6 @@ using System.Text;
 
 namespace EVCS
 {
-    public enum TypeNet
-    {
-        Device = 1,
-        User = 20,
-        CenterSever = 30
-    }
     public enum Messagetype
     {
         NULL = 0,
@@ -20,14 +14,6 @@ namespace EVCS
         codeus = 5,
         package = 6,
         update = 7
-    }
-    public enum Datatype
-    {
-        Device = 1,
-        User = 2,
-
-        CenterSever = 10,
-        Sever = 11
     }
     public enum Codemode
     {

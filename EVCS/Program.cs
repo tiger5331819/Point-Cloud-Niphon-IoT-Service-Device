@@ -11,9 +11,7 @@ namespace EVCS
         static void Main(string[] args)
         {
             NewMain newMain = new NewMain();
-            newMain.NewMain_Load();
-
-
+            Console.ReadLine();
         }
 
 

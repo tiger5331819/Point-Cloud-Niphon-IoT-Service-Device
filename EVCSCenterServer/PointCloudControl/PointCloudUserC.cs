@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using EVCS.PointCloudControl;
@@ -9,22 +10,26 @@ namespace EVCS
     class PointCloudUserC
     {
         PointCloudCC cc;
-        public UserData data;
+        public User data;
         Special cloud;
         PointCloudDeviceC deviceC;
         PointCloudUserC userC;
         PointCloudMailBox MailBox;
-        int UserID;
-
-        public PointCloudUserC(ref UserData d,ref Special s,ref PointCloudCC c,int i)
+        public string ID
         {
-            data = d;
+            get { return data.ID; }
+        }
+
+        public PointCloudUserC(ref Socket socket, ref Package package, ref Special s,ref PointCloudCC c, EventManager m)
+        {
             cloud = s;
             cc = c;
             deviceC = null;
             userC = this;
-            MailBox = new UserMailBox(ref d, s.Data.iplist);
-            UserID = i;
+            data = PointCloud_EVCS_Core.CreatUserData(ref socket, package);
+            MailBox = new UserMailBox(ref data,s.Data.iplist);
+            MailBox.Send(CenterServerNet.CreatIPListToPackage(Messagetype.codeus, s.Data.iplist));
+            m.Event += new EventManager.NewEventHandler(sendiplist);
 
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
@@ -49,7 +54,7 @@ namespace EVCS
             Receive();
             while (data.Live)
             { 
-                if (!data.Live) cloud.Data.iplist[UserID].ID = null;
+                if (!data.Live) cloud.Data.iplist.Remove(new IPList() { ID = data.ID, IP = data.IP });
                 Thread.Sleep(400);
             }
         }
@@ -66,16 +71,11 @@ namespace EVCS
 
         void monitor(Codemode codemode)
         {
-            for(int i=0;i<200;i++)
-            {
-                IPList ip = cloud.Data.iplist[i];
-                if (ip.IP == data.DeviceID)
-                {
-                    deviceC = cc.DeviceC[i];
-                    deviceC.adduser(ref userC,ip.ID);
-                    deviceC.order.Enqueue(codemode);
-                }
-            }
+
+           int i = cloud.Data.iplist.FindIndex(x => x.IP == data.DeviceID);
+           deviceC = cc.DeviceC[i];
+           deviceC.adduser(ref userC);
+           deviceC.order.Enqueue(codemode);
             
         }
         void release()
@@ -103,9 +103,18 @@ namespace EVCS
         }
         public bool SendMessage(Messagetype messagetype)
         {
-            if (MailBox.Send(CenterServerNet.UserDataToPackage(data, messagetype))) return true;
+            if (MailBox.Send(MailBox.DataToPackage(messagetype))) return true;
             else return false;
         }
-
+        void sendiplist(object o,Send_IPList e)
+        {
+            MailBox.Send(CenterServerNet.CreatIPListToPackage(Messagetype.codeus, cloud.Data.iplist));
+            Console.WriteLine("updatelist");
+        }
+        public void Unregister(EventManager m)
+        {
+            m.Event -= new EventManager.NewEventHandler(sendiplist);
+        }
     }
+
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using static System.Console;
@@ -10,8 +11,8 @@ namespace EVCS
     class PointCloudCC
     {
         Special cloud;
-        public PointCloudDeviceC[] DeviceC = new PointCloudDeviceC[200];
-        PointCloudUserC[] UserC = new PointCloudUserC[200];
+        public List<PointCloudDeviceC>DeviceC = new List<PointCloudDeviceC>(50);
+        List<PointCloudUserC>UserC = new List<PointCloudUserC>(50);
         
         PointCloudCC cc;
         string article;
@@ -19,11 +20,6 @@ namespace EVCS
         public PointCloudCC(ref Special c)
         {
             cloud = c;
-            for (int i = 0; i < 200; i++)
-            {
-                DeviceC[i] = null;
-                UserC[i] = null;
-            }
             cc = this;
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
@@ -34,41 +30,57 @@ namespace EVCS
         }
         void CreateThreadToCheckData()
         {
-            Boolean []DeviceList=new Boolean [200];
-            Boolean []UserList = new Boolean[200];
-            for (int i = 0; i < 200; i++)
-            {
-                DeviceList[i] = false;
-                UserList[i] = false;
-            }
-
+            EventManager m = new EventManager();
             while(true)
             {
-                for(int i=0;i<200;i++)
+                Socket socket=null;
+                cloud.cloudnet.socketslist.TryDequeue(out socket);
+                if(socket!=null)
                 {
-                    IPList ip = cloud.Data.iplist[i];
-                    if (ip.ID != null)
-                    {
-                        if (!DeviceList[i])
-                        {
-                            DeviceList[i] = true;
+                    byte[] buf = new byte[1024 * 1024];
 
-                            DeviceC[i] = new PointCloudDeviceC(ref cloud.Data.Devicedata[i], ref cloud,i);
+                    socket.Receive(buf);
+                    Package package = IoT_Net.BytesToPackage(buf);
+
+                    if (package.message == Messagetype.codeus)
+                    {
+                        PointCloudUserC userC = new PointCloudUserC(ref socket, ref package, ref cloud, ref cc,m);
+                        UserC.Add(userC);
+
+                        IPList iP = new IPList();
+                        iP.ID = userC.ID;
+                        iP.IP = socket.RemoteEndPoint.ToString();
+                        cloud.Data.UserList.Add(iP);
+                    }
+                    else
+                    {
+                        if (package.message == Messagetype.ID)
+                        {
+                            PointCloudDeviceC deviceC= new PointCloudDeviceC(ref socket,ref package,ref cloud);
+
+                            //if (DeviceC.Exists(x => x.ID == deviceC.ID))
+                            //{
+                            //    int i = DeviceC.FindIndex(x => x.ID == deviceC.ID);
+                            //    DeviceC[i].giveLive = true;
+                            //}
+                            //else
+
+                            DeviceC.Add(deviceC);
+
+                            IPList iP = new IPList();
+                            iP.ID = deviceC.ID;
+                            iP.IP = socket.RemoteEndPoint.ToString();
+                            cloud.Data.iplist.Add(iP);
                         }
                     }
-                    else if (DeviceList[i]) { DeviceList[i] = false;Console.WriteLine(cloud.Data.Devicedata[i].ID); }
-
-                    ip = cloud.Data.UserList[i];
-                    if (ip.ID != null)
-                    {
-                        if (!UserList[i])
-                        {
-                            UserList[i] = true;
-                            UserC[i] = new PointCloudUserC(ref cloud.Data.Userdata[i], ref cloud,ref cc,i);
-                        }
-                    }
-                    else if (UserList[i]) UserList[i] = false;
+                    m.SimulateNewEvent(cloud.Data.iplist);
                 }
+
+                int i = -1,j=-1;
+                 i=DeviceC.FindIndex(x => x.giveLive == false);
+                j = UserC.FindIndex(x => x.data.Live == false);
+                if(i!=-1)DeviceC.RemoveAt(i);
+                if (j != -1) {UserC[j].Unregister(m); UserC.RemoveAt(j); }
                 Thread.Sleep(100);
             }
 
@@ -76,8 +88,6 @@ namespace EVCS
 
         public void shell()
         {
-            var Devicelist = from r in cloud.Data.iplist where r.ID != null orderby r.ID descending select r;
-            var Userlist = from r in cloud.Data.UserList where r.ID != null orderby r.ID descending select r;
             while (true)
             {
                 try
@@ -85,15 +95,17 @@ namespace EVCS
                     article = Console.ReadLine();
                     switch (article)
                     {
-                        case "DeviceList":foreach (IPList r in Devicelist) WriteLine(r.ID + " " + r.IP); break;
-                        case "UserList": foreach (IPList r in Userlist) WriteLine(r.ID + " " + r.IP); break;
+                        case "DeviceList":foreach (IPList r in cloud.Data.iplist) WriteLine(r.ID + " " + r.IP); break;
+                        case "UserList": foreach (IPList r in cloud.Data.UserList) WriteLine(r.ID + " " + r.IP); break;
                         case "Select": Select(); break;
-                        case "Data": Console.WriteLine(cloud.Data.Devicedata[0].ID); break;
                         default:break;
                     }
                     article = null;
                 }
-                catch (Exception) { }
+                catch (Exception ex)
+                {
+                    ErrorMessage.GetError(ex);
+                }
 
             }
         }
@@ -104,9 +116,8 @@ namespace EVCS
             article = null;
             article = ReadLine();
 
-            int flag = Convert.ToInt32(article);
-            PointCloudDeviceC d = DeviceC[flag];
-            WriteLine(d.ID());
+            PointCloudDeviceC d = DeviceC.Find(x=>x.ID==article);
+            WriteLine(d.ID);
 
             while(true)
             {

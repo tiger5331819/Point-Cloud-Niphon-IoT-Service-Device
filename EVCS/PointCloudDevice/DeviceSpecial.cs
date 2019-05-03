@@ -11,10 +11,8 @@ using System.Diagnostics;
 
 namespace EVCS
 {
-
     public class Special
     {
-       
         decimal flagvolume = 0;
         public decimal? Volume
         {
@@ -53,7 +51,7 @@ namespace EVCS
         public DeviceNet cloudnet;
         public DataChangeTODO changeTODO;
         public Process process;
-        public DeviceData Data;
+        public Device Data;
         public void loadcardata()
         {
             try
@@ -108,17 +106,16 @@ namespace EVCS
 
         public Special()
         {
-            this.Data = new DeviceData();
+            this.Data = new Device("Device","PointCloud-EVCS");
             loadxml();
             loadcardata();
             
             cloud = this;
-            this.cloudnet = new DeviceNet(ref Data);
-
-           
+        
            process = new Process();
            process.StartInfo.FileName = "体积计算 " +Volumev + ".exe";
 
+            this.cloudnet = new DeviceNet(ref Data,"PointCloud-EVCS");
             this.changeTODO = new DataChangeTODO(ref Data,ref cloud);
         }
         

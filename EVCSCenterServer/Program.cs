@@ -10,7 +10,6 @@ namespace EVCS
         {
             //model
             Special PointCloudSever = new Special();
-            PointCloudSever.cloudnet.serverLink();
             //control
             PointCloudCC point=new PointCloudCC(ref PointCloudSever);
         }

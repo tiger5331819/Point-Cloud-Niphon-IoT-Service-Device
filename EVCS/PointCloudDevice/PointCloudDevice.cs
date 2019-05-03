@@ -10,15 +10,82 @@ using System.Threading;
 namespace EVCS
 {
     [Serializable]
-    public class DeviceData : TypeData
+    public struct configtimexml
+    {
+        public string time;
+        public string beginhour;
+        public string beginminute;
+        public string endminute;
+        public string endhour;
+    }
+    [Serializable]
+    public struct NetIP
+    {
+        string ip;
+        public string IP
+        {
+            get { return ip; }
+            set { ip = value; }
+        }
+        int point;
+        public int Point
+        {
+            get { return point; }
+            set { point = value; }
+        }
+    }
+    [Serializable]
+    public struct volumecontrol
+    {
+        public int carNo;
+        public string carName;
+        public decimal? carVolume;
+        public string carSN;
+        public decimal? volume;
+
+        public string count;
+        public int Loadingrate;
+        public string Endtime;
+        public string Begintime;
+
+    }
+    [Serializable]
+    public class DeviceData : IoT_Data
+    {
+        public configtimexml[] configtime;
+        public volumecontrol volume;
+        public DeviceData(string typedata,string typesystem)
+            :base(typedata,typesystem)
+        {
+            configtime = new configtimexml[3];
+            volume = new volumecontrol();
+        }
+        public DeviceData():base()
+        {
+
+        }
+        public DeviceData GetData()
+        {
+            DeviceData data = new DeviceData(this.TypeData,this.TypeSystem);
+            data.ID = this.ID;
+            data.volume = this.volume;
+            for(int i=0;i<3;i++)
+            {
+                data.configtime[i] = this.configtime[i];
+            }
+            return data;
+        }
+    }
+    public class Device : DeviceData
     {
        public DeviceData Newdata=null;
         public NetIP ip;
         public volumecontrol newvolumecontrol;
-        public string IP;
         public Boolean Live = false;
-
-        public DeviceData()
+        public bool flag;
+        public Messagetype messagetype;
+        public Codemode codemode;
+        public Device(string typedata, string typesystem):base(typedata, typesystem)
         {
             ip = new NetIP();
         }
@@ -30,76 +97,73 @@ namespace EVCS
         }
 
     }
-   public class DeviceNet : DeviceNetClass
+   public class DeviceNet : IoT_Net
     {
-        DeviceData Data;
-        IPAddress ip;
-        IPEndPoint point;
-        Boolean connectflag = true;
-        public DeviceNet(ref DeviceData data)
+        Device Data;
+        public DeviceNet(ref Device data,string typenet):base(typenet)
         {
-            typenet = TypeNet.Device;
-
             ip = IPAddress.Parse(data.ip.IP);
             point = new IPEndPoint(ip, data.ip.Point);
             Data = data;
+            Connect();
         }
 
-       public bool userconnect()
+        static public Package DeviceDataToPackage(DeviceData data, Messagetype messagetype = Messagetype.package)
         {
-         
-          while (true)
-          {
-                if (connectflag)
+            Package package = new Package();
+            package.data = null;
+            
+            try
+            {
+                using (MemoryStream ms = new MemoryStream())
                 {
-                    try
+                    BinaryFormatter bf = new BinaryFormatter();
+                    switch (messagetype)
                     {
-                        socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                        socket.Connect(point);
-
-
-                        Send(DeviceDataToPackage(Data, Messagetype.ID));
-
-                        Thread waitcommand = new Thread(ReceiveCommand);
-                        waitcommand.IsBackground = true;
-                        waitcommand.Start(socket);
-                        Console.WriteLine("Link server");
-                        connectflag = false;
+                        case Messagetype.carinfomessage: bf.Serialize(ms, data.volume); break;
+                        case Messagetype.volumepackage: bf.Serialize(ms, data.volume); break;
+                        case Messagetype.package: bf.Serialize(ms, data); break;
+                        case Messagetype.ID: bf.Serialize(ms, data); break;
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    
+                    ms.Flush();
+                    package.message = messagetype;
+                    
+                    package.data = ms.ToArray();
+                    
                 }
-                else Thread.Sleep(1000);
-          }
-       }
-        void ReceiveCommand(object s)
+                return package;
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage.GetError(ex);
+            }
+            return package;
+        }
+        public override void ReceiveCommand()
         {
-            Socket command = s as Socket;
-            PackageToData packageToData = new PackageToData(NewDeviceData);
-            PackageToData packageToCode = new PackageToData(NewCode);
-            PackageToData updateToData = new PackageToData(Updatemessage);
+            Send(DeviceDataToPackage(Data.GetData(), Messagetype.ID));
             while (true)
             {
                 try
                 {
                     byte[] buffer = new byte[1024 * 1024];
-                    command.Receive(buffer);
+                    socket.Receive(buffer);
                     Package package = BytesToPackage(buffer);
+
                     //根据接受的命令去做不同的任务
-                    switch(package.message)
+                    switch (package.message)
                     {
-                        case Messagetype.order:packageToCode(package); break;
-                        case Messagetype.package:packageToData(package);break;
-                        case Messagetype.update:updateToData(package);break;
+                        case Messagetype.order: NewCode(package); break;
+                        case Messagetype.package: NewDeviceData(package);break;
+                        case Messagetype.update: Updatemessage(package);break;
                     }                   
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
-                    command.Shutdown(SocketShutdown.Both);
-                    command.Close();
+                    ErrorMessage.GetError(ex);
+                    socket.Shutdown(SocketShutdown.Both);
+                    socket.Close();
                     connectflag = true;
                     break;
                 }
@@ -114,8 +178,7 @@ namespace EVCS
             Data.codemode=(Codemode)Convert.ToInt32(Encoding.UTF8.GetString(package.data, 0, package.data.Length));          
             Data.Newdata = null;
             Data.messagetype = package.message;
-
-            Data.flag = true;         
+            Data.flag = true;
         }
         /// <summary>
         /// example
@@ -124,7 +187,6 @@ namespace EVCS
         void NewDeviceData(Package package)
         {
             DeviceData data = new DeviceData();          
-            data.datatype = Datatype.Device;
             using (MemoryStream ms = new MemoryStream())
             {
                ms.Write(package.data, 0, package.data.Length);

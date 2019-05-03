@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using EVCS.PointCloudControl;
@@ -9,19 +10,26 @@ namespace EVCS
     class PointCloudDeviceC
     {
         Special cloud;
-        DeviceData data;
+        Device data;
         PointCloudUserC user;
         PointCloudMailBox MailBox;
-        int DeviceID;
         public Queue<Codemode> order = new Queue<Codemode>();
-
-        public PointCloudDeviceC(ref DeviceData d, ref Special s,int i)
+        public string ID
         {
-            data = d;
+            get { return data.ID; }
+        }
+        public bool giveLive
+        {
+            get { return data.Live; }
+            set { data.Live = true; }
+        }
+
+        public PointCloudDeviceC(ref Socket socket,ref Package package,ref Special s)
+        {
             cloud = s;
             user = null;
-            DeviceID = i;
-            MailBox = new DeviceMailBox(ref d); 
+            data = PointCloud_EVCS_Core.CreatDeviceData(ref socket, package);
+            MailBox = new DeviceMailBox(ref data);
 
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
@@ -47,10 +55,7 @@ namespace EVCS
             }
             Receive();
             while (data.Live)
-            {               
-                //Console.WriteLine("111");
-                if(!data.Live) cloud.Data.iplist[DeviceID].ID = null;
-
+            {
                 if (sum == 100) { SendCode(Codemode.monitor);sum = 0; }
 
                 Codemode code;
@@ -59,17 +64,12 @@ namespace EVCS
                     SendCode(code);
                 }
             }
-        }
-
-        public string ID()
-        {
-            return data.ID;
+            Console.WriteLine("data is dead");
+            cloud.Data.iplist.Remove(new IPList() { ID = data.ID, IP = data.IP });
         }
 
         void ChangeCarMessage()
         {
-            data.volume = data.newvolumecontrol;
-
             Console.WriteLine(data.ID);
             Console.WriteLine(data.volume.carName);
             Console.WriteLine(data.volume.carVolume);
@@ -79,16 +79,10 @@ namespace EVCS
                user.UpdateVolume(data.volume);
             }
         }
-        public bool adduser(ref PointCloudUserC d, string devicename)
+        public bool adduser(ref PointCloudUserC d)
         {
-            foreach (IPList ip in cloud.Data.iplist)
-            {
-                if (ip.ID == devicename)
-                {
-                    user = d;
-                    Console.WriteLine(user.data.ID);
-                }
-            }
+            user = d;
+            Console.WriteLine(user.data.ID);
             return false;
         }
         public bool removeuser()
@@ -114,13 +108,13 @@ namespace EVCS
         }
        public bool SendMessage(Messagetype messagetype)
         {
-            if (MailBox.Send(CenterServerNet.DeviceDataToPackage(data, messagetype))) return true;
+            if (MailBox.Send(MailBox.DataToPackage(messagetype))) return true;
             else return false;
         }
         public bool SendCode(Codemode code)
         {
             if (MailBox.Send(CenterServerNet.CreatCodeToPackage_ToDevice(code))) return true;
-            else return false;
+            else { Console.WriteLine("fail"); return false; }
         }
         bool SendUpdate(Messagetype messagetype=Messagetype.update)
         {
@@ -130,7 +124,7 @@ namespace EVCS
                 Console.WriteLine("Orderqueue is not null.");
                 return false;
             }
-            if (MailBox.Send(CenterServerNet.DeviceDataToPackage(data,messagetype))) return true;
+            if (MailBox.Send(MailBox.DataToPackage(messagetype))) return true;
             else return false;
         }
     }

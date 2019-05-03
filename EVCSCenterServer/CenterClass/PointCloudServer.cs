@@ -11,209 +11,183 @@ using static System.Console;
 namespace EVCS
 {
     [Serializable]
-    public class DeviceData : TypeData
+    public struct configtimexml
     {
-        public DeviceData Newdata = null;
-        public volumecontrol newvolumecontrol;
-        public NetIP ip;
+        public string time;
+        public string beginhour;
+        public string beginminute;
+        public string endminute;
+        public string endhour;
+    }
+    [Serializable]
+    public struct NetIP
+    {
+        string ip;
+        public string IP
+        {
+            get { return ip; }
+            set { ip = value; }
+        }
+        int point;
+        public int Point
+        {
+            get { return point; }
+            set { point = value; }
+        }
+    }
+    [Serializable]
+    public struct volumecontrol
+    {
+        public int carNo;
+        public string carName;
+        public decimal? carVolume;
+        public string carSN;
+        public decimal? volume;
+
+        public string count;
+        public int Loadingrate;
+        public string Endtime;
+        public string Begintime;
+    }
+
+    [Serializable]
+    public class DeviceData : IoT_Data
+    {
+        public configtimexml[] configtime;
+        public volumecontrol volume;
+        public DeviceData(string typedata, string typesystem)
+            : base(typedata, typesystem)
+        {
+            configtime = new configtimexml[3];
+            volume = new volumecontrol();
+        }
+        public DeviceData() : base()
+        {
+            configtime = new configtimexml[3];
+            volume = new volumecontrol();
+        }
+        public DeviceData GetData()
+        {
+            DeviceData data = new DeviceData(this.TypeData, this.TypeSystem);
+            data.ID = this.ID;
+            data.volume = this.volume;
+            for (int i = 0; i < 3; i++)
+            {
+                data.configtime[i] = this.configtime[i];
+            }
+            return data;
+        }
+    }
+
+    public class Device : DeviceData
+    {
         public string IP=null;
         public Boolean Live = false;
+        public Messagetype messagetype;
+        public Codemode codemode;
+        public Socket socket = null;
 
-        public DeviceData()
+        public Device():base() 
         {
-            ip = new NetIP();
+
+        }
+        public void Update(DeviceData data)
+        {
+            this.TypeData = data.TypeData;
+            this.TypeSystem = data.TypeSystem;
+            this.ID = data.ID;
+            for (int i = 0; i < 3; i++)
+            {
+                configtime[i] = data.configtime[i];
+            }
+            volume = data.volume;
         }
     }
 
     [Serializable]
-    public class UserData : TypeData
+    public class UserData : IoT_Data
     {
-        public NetIP ip;
+        public configtimexml[] configtime;
+        public volumecontrol volume;
+
+        public UserData(string typedata, string typesystem)
+            : base(typedata, typesystem)
+        {
+            configtime = new configtimexml[3];
+            volume = new volumecontrol();
+        }
+        public UserData():base()
+        {
+            configtime = new configtimexml[3];
+            volume = new volumecontrol();
+        }
+        public UserData GetData()
+        {
+            UserData data = new UserData(this.TypeData, this.TypeSystem);
+            data.volume = this.volume;
+            for (int i = 0; i < 3; i++)
+            {
+                data.configtime[i] = this.configtime[i];
+            }
+            return data;
+        }
+    }
+
+    public class User : UserData
+    {
         public string IP;
         public string DeviceID;
         public Boolean Live = false;
-
-        public UserData()
+        public Socket socket = null;
+        public Messagetype messagetype;
+        public Codemode codemode;
+        public User():base()
         {
             DeviceID = null;
-            ip = new NetIP();
         }
-    }
-
-    public class ServerData
-    {
-        public IPList[] iplist = new IPList[200];
-        public IPList[] UserList = new IPList[200];
-        public DeviceData []Devicedata=new DeviceData[100];
-        public UserData []Userdata=new UserData[100];
-        public NetIP ip=new NetIP();
-        public string ID;
-
-        public ServerData()
+        public void Update(UserData data)
         {
-            for (int i=0;i<100;i++)
+            for (int i = 0; i < 3; i++)
             {
-                Devicedata[i] = null;
-                Userdata[i] = null;
+                configtime[i] = data.configtime[i];
+            }
+            volume = data.volume;
+        }
+    }
 
-                iplist[i].ID = null;
-                iplist[i].IP = null;
+    public class ServerData:IoT_Data
+    {
+        public List<IPList> iplist = new List<IPList>(200);
+        public List<IPList> UserList = new List<IPList>(200);
+        public NetIP ip;
+        
 
-                UserList[i].ID = null;
-                UserList[i].IP = null;
-            }            
+        public ServerData(string typedata, string typesystem) :base(typedata,typesystem)
+        {
+           ip=new NetIP();
         }
 
 
     }
 
-    public class CenterServerNet:CenterNetClass
+    public class CenterServerNet:IoT_Net
     {
         ServerData Data;
-        IPAddress ip;
-        IPEndPoint point;
+
         Special cloud;
 
-        public CenterServerNet(ref ServerData data,ref Special s)
+        public CenterServerNet(ref ServerData data,ref Special s):base("PointCloud-EVCS")
         {
-            typenet = TypeNet.CenterSever;
-            ip = IPAddress.Parse(data.ip.IP);
-            point = new IPEndPoint(ip, data.ip.Point);
+            this.ip = IPAddress.Parse(data.ip.IP);
+            this.point = new IPEndPoint(ip, data.ip.Point);
             this.cloud = s;
             Data = data;
+
+            LinkBind();
         }
 
-        /// <summary>
-        /// 创建一个服务器socket对象，走到监听端口这一步，新建线程，并将服务器socket对象传递过去，
-        /// 用于实时创建连接的客户端socket
-        /// </summary>
-        /// <returns></returns>
-        public bool serverLink()
-        {
-            //创建监听用的Socket
-            /*
-               AddressFamily.InterNetWork：使用 IP4地址。
-               SocketType.Stream：支持可靠、双向、基于连接的字节流，而不重复数据。
-               此类型的 Socket 与单个对方主机进行通信，并且在通信开始之前需要远程主机连接。
-               Stream 使用传输控制协议 (Tcp) ProtocolType 和 InterNetworkAddressFamily。
-               ProtocolType.Tcp：使用传输控制协议。
-             */
-            Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            try
-            {
-                socket.Bind(point);
-                socket.Listen(10);
-                Console.WriteLine("服务器开始监听");
 
-                //这个线程用于实例化socket，每当一个子端connect时，new一个socket对象并保存到相关数据集合
-                Thread acceptInfo = new Thread(AcceptInfo);
-                acceptInfo.IsBackground = true;
-                acceptInfo.Start(socket);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-            return true;
-        }
-
-        /// <summary>
-        ///每有一个客户端连接，就会创建一个socket对象用于保存客户端传过来的套接字信息
-        /// </summary>
-        /// <param name="o"></param>
-        void AcceptInfo(object o)
-        {
-            Socket socket = o as Socket;
-            while (true)
-            {
-                try
-                {
-                    //没有客户端连接时，accept会处于阻塞状态
-                    Socket tSocket = socket.Accept();
-
-                    string point = tSocket.RemoteEndPoint.ToString();
-                    Console.WriteLine(point + "连接成功！");
-     
-                    Thread th = new Thread(ReceiveMsg);
-                    th.IsBackground = true;
-                    th.Start(tSocket);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    break;
-                }
-            }
-        }
-        void ReceiveMsg(object o)
-        {
-            Socket client = o as Socket;
-
-            void ipinfo()
-            {
-                byte[] buf = new byte[1024 * 1024];
-
-                client.Receive(buf);
-                Package package = BytesToPackage(buf);
-
-
-                if (package.message == Messagetype.codeus)
-                {
-                    PackageToUserData packageToUserData = new PackageToUserData(NewUser);
-                    int i = 0;
-                    foreach (IPList ip in Data.UserList)
-                    {              
-                        if (ip.ID == null)
-                        {
-                            Data.Userdata[i] = packageToUserData(package);
-                            Data.Userdata[i].IP = client.RemoteEndPoint.ToString();
-                            Data.Userdata[i].Live = true;
-                            Data.Userdata[i].socket = client;
-
-                            Data.UserList[i].ID = Data.Userdata[i].ID;
-                            Data.UserList[i].IP = client.RemoteEndPoint.ToString();                           
-                            break;
-                        }
-                        i++;
-                    }
-                    Send(CreatIPListToPackage(Messagetype.codeus, Data.iplist), client);
-                }
-                else
-                {
-                    if (package.message == Messagetype.ID)
-                    {
-                        PackageToDeviceData packageToDeviceData = new PackageToDeviceData(NewDevice);
-
-                        int i = 0;
-                        foreach (IPList ip in Data.iplist)
-                        {
-
-                            if (ip.ID == null)
-                            {
-                                Data.Devicedata[i] = packageToDeviceData(package);
-                                Data.Devicedata[i].IP= client.RemoteEndPoint.ToString();
-                                Data.Devicedata[i].Live = true;
-                                Data.Devicedata[i].socket = client;
-
-                                Data.iplist[i].ID = Data.Devicedata[i].ID;
-                                Data.iplist[i].IP = client.RemoteEndPoint.ToString();
-
-                                //Thread thread = new Thread(DeviceReceive);
-                                //thread.IsBackground = true;
-                                //thread.Start(client);
-                                break;
-                            }
-                            i++;
-                        }
-                    }
-                }
-
-            }
-            ipinfo();
-            
-        }
-
-        static public Package CreatIPListToPackage(Messagetype messagetype,IPList []ipl)
+        static public Package CreatIPListToPackage(Messagetype messagetype,List<IPList>ipl)
         {
             Package package = new Package();
             package.message = messagetype;
@@ -231,34 +205,38 @@ namespace EVCS
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                ErrorMessage.GetError(ex);
             }
             return package;
         }
 
-        UserData NewUser(Package package)
+        public static User NewUser(Package package)
         {
-            UserData data = new UserData();
+            User data = new User();
+            UserData user = new UserData();
             using (MemoryStream ms = new MemoryStream())
             {
                 ms.Write(package.data, 0, package.data.Length);
                 ms.Flush();
                 ms.Position = 0;
                 BinaryFormatter bf = new BinaryFormatter();
-                data = (UserData)bf.Deserialize(ms);
+                user = (UserData)bf.Deserialize(ms);
+                data.Update(user);
             }
             return data;
         }
-        DeviceData NewDevice(Package package)
+        public static Device NewDevice(Package package)
         {
-            DeviceData data = new DeviceData();
+            Device data = new Device();
+            DeviceData Ddata = new DeviceData();
             using (MemoryStream ms = new MemoryStream())
             {
                 ms.Write(package.data, 0, package.data.Length);
                 ms.Flush();
                 ms.Position = 0;
                 BinaryFormatter bf = new BinaryFormatter();
-                data = (DeviceData)bf.Deserialize(ms);
+                Ddata = (DeviceData)bf.Deserialize(ms);
+                data.Update(Ddata);
             }
             return data;
         }

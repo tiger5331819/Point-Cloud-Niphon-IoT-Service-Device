@@ -13,15 +13,16 @@ namespace EVCS.PointCloudControl
     {
         Task<bool> DOReceive();
         bool Send(Package package);
+        Package DataToPackage(Messagetype messagetype = Messagetype.package);
     }
 
     public class DeviceMailBox:PointCloudMailBox
     {
         Socket socket=null;
-        DeviceData Data = null;
+        Device Data = null;
 
         delegate void PackageToData(Package package);
-        public DeviceMailBox(ref DeviceData d)
+        public DeviceMailBox(ref Device d)
         {
             socket = d.socket;
             Data = d;
@@ -43,7 +44,7 @@ namespace EVCS.PointCloudControl
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                ErrorMessage.GetError(ex);
                 return false;
             }
             return true;
@@ -79,7 +80,7 @@ namespace EVCS.PointCloudControl
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    ErrorMessage.GetError(ex);
                     Data.Live = false;
                     return false;
                 }
@@ -124,7 +125,7 @@ namespace EVCS.PointCloudControl
                     ms.Position = 0;
                     BinaryFormatter bf = new BinaryFormatter();
 
-                    Data.newvolumecontrol = (volumecontrol)bf.Deserialize(ms);
+                    Data.volume = (volumecontrol)bf.Deserialize(ms);
 
                     Data.messagetype = package.message;
                 }
@@ -135,15 +136,47 @@ namespace EVCS.PointCloudControl
             }
 
         }
+
+        public Package DataToPackage(Messagetype messagetype = Messagetype.package)
+        {
+            Package package = new Package();
+            package.data = null;
+            DeviceData data = Data.GetData();
+            try
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    BinaryFormatter bf = new BinaryFormatter();
+                    switch (messagetype)
+                    {
+                        case Messagetype.carinfomessage: bf.Serialize(ms, data.volume); break;
+                        case Messagetype.volumepackage: bf.Serialize(ms, data.volume); break;
+                        case Messagetype.package: bf.Serialize(ms, data); break;
+                        default: bf.Serialize(ms, data); break;
+                    }
+                    ms.Flush();
+
+                    package.message = messagetype;
+                    package.data = ms.ToArray();
+                }
+                return package;
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage.GetError(ex);
+
+            }
+            return package;
+        }
     }
 
     public class UserMailBox : PointCloudMailBox
     {
         Socket socket = null;
-        UserData Data = null;
-        public IPList[] iplist;
+        User Data = null;
+        public List<IPList> iplist;
 
-        public UserMailBox(ref UserData d, IPList[] ip)
+        public UserMailBox(ref User d, List<IPList>ip)
         {
             iplist = ip;
             socket = d.socket;
@@ -167,7 +200,7 @@ namespace EVCS.PointCloudControl
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                ErrorMessage.GetError(ex);
                 return false;
             }
             return true;
@@ -213,7 +246,7 @@ namespace EVCS.PointCloudControl
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                ErrorMessage.GetError(ex);
                 Data.Live = false;
                 return false;
             }
@@ -231,11 +264,11 @@ namespace EVCS.PointCloudControl
                     ms.Position = 0;
                     BinaryFormatter bf = new BinaryFormatter();
 
-                    data = (UserData)bf.Deserialize(ms);
+                    data = (User)bf.Deserialize(ms);
                 }
                 switch(messagetype)
                 {
-                    case Messagetype.package:Data = data;break;
+                    case Messagetype.package:Data.Update(data);break;
                     case Messagetype.update:
                         Data.messagetype = package.message;
                         Data.configtime = data.configtime;
@@ -256,6 +289,38 @@ namespace EVCS.PointCloudControl
             Data.codemode = (Codemode)Convert.ToInt32(Encoding.UTF8.GetString(package.data, 0, package.data.Length));
             Data.messagetype = package.message;
             Console.WriteLine(Data.codemode);
+        }
+
+        public Package DataToPackage(Messagetype messagetype = Messagetype.package)
+        {
+            Package package = new Package();
+            package.data = null;
+            UserData data = Data.GetData();
+            try
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    BinaryFormatter bf = new BinaryFormatter();
+                    switch (messagetype)
+                    {
+                        case Messagetype.carinfomessage: bf.Serialize(ms, data.volume); break;
+                        case Messagetype.volumepackage: bf.Serialize(ms, data.volume); break;
+                        case Messagetype.package: bf.Serialize(ms, data); break;
+                        default: bf.Serialize(ms, data); break;
+                    }
+                    ms.Flush();
+
+                    package.message = messagetype;
+                    package.data = ms.ToArray();
+                }
+                return package;
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage.GetError(ex);
+
+            }
+            return package;
         }
     }
 }

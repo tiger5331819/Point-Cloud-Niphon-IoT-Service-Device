@@ -12,13 +12,14 @@ namespace EVCS
     public class DataChangeTODO
     {
         Boolean sendvolumeflag=true;
-        DeviceData Data;
-        public Special cloud;
+        Device Data;
+        Special cloud;
 
-        public DataChangeTODO(ref DeviceData data,ref Special c)
+
+        public DataChangeTODO(ref Device data,ref Special s)
         {
-            this.Data = data;
-            this.cloud = c;
+            Data = data;
+            cloud = s;
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true; 
             check.Start();
@@ -30,12 +31,11 @@ namespace EVCS
                 while (true)
                 {
                     if (Data.newdatachange())
-                    {
-
+                    {                       
                         switch (Data.messagetype)
                         {
                             case Messagetype.carinfomessage: ChangeCarinfoMessage(); break;
-                            case Messagetype.order: OrderTODO(); break;
+                            case Messagetype.order:  OrderTODO(); break;
                             case Messagetype.update:updateTODO();break;
                         }
                         Data.flag = false;
@@ -45,7 +45,7 @@ namespace EVCS
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                ErrorMessage.GetError(ex);
             }
         }
         private void ChangeCarinfoMessage()
@@ -87,20 +87,19 @@ namespace EVCS
                 try
                 {
                     
-                    cloud.cloudnet.Send(cloud.cloudnet.DeviceDataToPackage(cloud.Data,Messagetype.volumepackage));
+                    cloud.cloudnet.Send(DeviceNet.DeviceDataToPackage(Data.GetData(),Messagetype.volumepackage));
                     Thread.Sleep(500);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    ErrorMessage.GetError(ex);
                 }
             }
             sendvolumeflag = true;
         }
         private void monitor()
         {
-
-            cloud.cloudnet.Send(cloud.cloudnet.DeviceDataToPackage(cloud.Data,Messagetype.carinfomessage));
+            cloud.cloudnet.Send(DeviceNet.DeviceDataToPackage(Data.GetData(),Messagetype.carinfomessage));
         }
 
 
@@ -118,7 +117,7 @@ namespace EVCS
         }
         private void updateTODO()
         {
-            cloud.cloudnet.Send(cloud.cloudnet.DeviceDataToPackage(cloud.Data, Messagetype.package));
+            cloud.cloudnet.Send(DeviceNet.DeviceDataToPackage(cloud.Data.GetData(), Messagetype.package));
             Console.WriteLine("succeed");
         }
     }

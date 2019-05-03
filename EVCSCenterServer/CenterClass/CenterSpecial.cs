@@ -39,7 +39,7 @@ namespace EVCS
         /// </summary>
         public Special()
         {
-            this.Data = new ServerData();
+            this.Data = new ServerData("Server", "PointCloud-EVCS");
             loadxml();   
             cloud = this;
             this.cloudnet = new CenterServerNet(ref Data,ref cloud);
@@ -52,11 +52,11 @@ namespace EVCS
             //获取到XML的根元素进行操作
             XElement root = document.Root;
 
-            XElement Device = root.Element("Device");
-            XElement ID = Device.Element("ID");
+            XElement Server = root.Element("Server");
+            XElement ID = Server.Element("ID");
             Data.ID = ID.Value;
 
-            XElement version = Device.Element("EVCSServerVersion");
+            XElement version = Server.Element("EVCSServerVersion");
             EVCSServerVersion = version.Value;
 
             XElement NetLink = root.Element("NetLink");
