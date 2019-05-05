@@ -7,6 +7,9 @@ using EVCS.PointCloudControl;
 
 namespace EVCS
 {
+    /// <summary>
+    /// 用户控制器
+    /// </summary>
     class PointCloudUserC
     {
         PointCloudCC cc;
@@ -19,7 +22,6 @@ namespace EVCS
         {
             get { return data.ID; }
         }
-
         public PointCloudUserC(ref Socket socket, ref Package package, ref Special s,ref PointCloudCC c, EventManager m)
         {
             cloud = s;
@@ -29,13 +31,12 @@ namespace EVCS
             data = PointCloud_EVCS_Core.CreatUserData(ref socket, package);
             MailBox = new UserMailBox(ref data,s.Data.iplist);
             MailBox.Send(CenterServerNet.CreatIPListToPackage(Messagetype.codeus, s.Data.iplist));
-            m.Event += new EventManager.NewEventHandler(sendiplist);
+            m.Event += new EventManager.NewEventHandler(sendiplist);//事件注册
 
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
             check.Start();
         }
-
         void CreateThreadToCheckData()
         {
             async void Receive()
@@ -58,7 +59,6 @@ namespace EVCS
                 Thread.Sleep(400);
             }
         }
-
         void orderTODO()
         {
             switch(data.codemode)
@@ -68,7 +68,6 @@ namespace EVCS
                 default:codemode(data.codemode); break;
             }
         }
-
         void monitor(Codemode codemode)
         {
 
@@ -87,13 +86,10 @@ namespace EVCS
         {
             deviceC.order.Enqueue(codemode);
         }
-
         void updateTODO()
         {
             deviceC.updatemessage(data.volume, data.configtime);
         }
-
-
         public void UpdateVolume(volumecontrol v)
         {
             data.volume = v;
@@ -111,6 +107,10 @@ namespace EVCS
             MailBox.Send(CenterServerNet.CreatIPListToPackage(Messagetype.codeus, cloud.Data.iplist));
             Console.WriteLine("updatelist");
         }
+        /// <summary>
+        /// 注销事件
+        /// </summary>
+        /// <param name="m">事件管理器</param>
         public void Unregister(EventManager m)
         {
             m.Event -= new EventManager.NewEventHandler(sendiplist);

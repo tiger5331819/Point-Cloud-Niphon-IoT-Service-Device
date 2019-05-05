@@ -9,6 +9,9 @@ using System.Threading;
 
 namespace EVCS
 {
+    /// <summary>
+    /// 定时功能配置数据结构
+    /// </summary>
     [Serializable]
     public struct configtimexml
     {
@@ -18,6 +21,9 @@ namespace EVCS
         public string endminute;
         public string endhour;
     }
+    /// <summary>
+    /// 网络IP数据结构
+    /// </summary>
     [Serializable]
     public struct NetIP
     {
@@ -34,6 +40,9 @@ namespace EVCS
             set { point = value; }
         }
     }
+    /// <summary>
+    /// 体积信息数据结构
+    /// </summary>
     [Serializable]
     public struct volumecontrol
     {
@@ -49,21 +58,37 @@ namespace EVCS
         public string Begintime;
 
     }
+    /// <summary>
+    /// 传输所用设备核心数据结构，继承自核心数据类
+    /// </summary>
     [Serializable]
     public class DeviceData : IoT_Data
     {
         public configtimexml[] configtime;
         public volumecontrol volume;
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="typedata">数据类型</param>
+        /// <param name="typesystem">所属系统</param>
         public DeviceData(string typedata,string typesystem)
             :base(typedata,typesystem)
         {
             configtime = new configtimexml[3];
             volume = new volumecontrol();
         }
+        /// <summary>
+        /// 空构造函数
+        /// </summary>
         public DeviceData():base()
         {
-
+            configtime = new configtimexml[3];
+            volume = new volumecontrol();
         }
+        /// <summary>
+        /// 获取核心数据
+        /// </summary>
+        /// <returns>DeviceData类型的核心数据</returns>
         public DeviceData GetData()
         {
             DeviceData data = new DeviceData(this.TypeData,this.TypeSystem);
@@ -76,19 +101,31 @@ namespace EVCS
             return data;
         }
     }
+    /// <summary>
+    /// EVCS设备端所使用的数据结构，继承自设备核心数据类
+    /// </summary>
     public class Device : DeviceData
     {
-       public DeviceData Newdata=null;
+        public DeviceData Newdata=null;
         public NetIP ip;
         public volumecontrol newvolumecontrol;
         public Boolean Live = false;
         public bool flag;
         public Messagetype messagetype;
         public Codemode codemode;
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="typedata">数据类型</param>
+        /// <param name="typesystem">所属系统</param>
         public Device(string typedata, string typesystem):base(typedata, typesystem)
         {
             ip = new NetIP();
         }
+        /// <summary>
+        /// 请求数据是否发生改变
+        /// </summary>
+        /// <returns>bool值</returns>
         public bool newdatachange()
         {
             if (flag)
@@ -97,9 +134,17 @@ namespace EVCS
         }
 
     }
+    /// <summary>
+    /// 设备网络服务类，实现最基本的网络服务，继承自核心类IoT_Net
+    /// </summary>
    public class DeviceNet : IoT_Net
     {
         Device Data;
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="data">EVCS设备数据</param>
+        /// <param name="typenet">网络类别</param>
         public DeviceNet(ref Device data,string typenet):base(typenet)
         {
             ip = IPAddress.Parse(data.ip.IP);
@@ -107,12 +152,16 @@ namespace EVCS
             Data = data;
             Connect();
         }
-
+        /// <summary>
+        /// 基础服务：将设备核心数据序列化并打包
+        /// </summary>
+        /// <param name="data">EVCS设备核心数据</param>
+        /// <param name="messagetype">消息种类，默认值为Message.package</param>
+        /// <returns></returns>
         static public Package DeviceDataToPackage(DeviceData data, Messagetype messagetype = Messagetype.package)
         {
             Package package = new Package();
-            package.data = null;
-            
+            package.data = null;          
             try
             {
                 using (MemoryStream ms = new MemoryStream())
@@ -124,13 +173,10 @@ namespace EVCS
                         case Messagetype.volumepackage: bf.Serialize(ms, data.volume); break;
                         case Messagetype.package: bf.Serialize(ms, data); break;
                         case Messagetype.ID: bf.Serialize(ms, data); break;
-                    }
-                    
+                    }                   
                     ms.Flush();
-                    package.message = messagetype;
-                    
-                    package.data = ms.ToArray();
-                    
+                    package.message = messagetype;                   
+                    package.data = ms.ToArray();                   
                 }
                 return package;
             }
@@ -140,6 +186,9 @@ namespace EVCS
             }
             return package;
         }
+        /// <summary>
+        /// 重载的ReceiveCommand方法
+        /// </summary>
         public override void ReceiveCommand()
         {
             Send(DeviceDataToPackage(Data.GetData(), Messagetype.ID));
@@ -170,9 +219,10 @@ namespace EVCS
             }
         }
         /// <summary>
-        /// example
+        /// example：解包
+        /// 反序列化字符串
         /// </summary>
-        /// <param name="package"></param>
+        /// <param name="package">Package包</param>
         void NewCode(Package package)
         {         
             Data.codemode=(Codemode)Convert.ToInt32(Encoding.UTF8.GetString(package.data, 0, package.data.Length));          
@@ -181,9 +231,10 @@ namespace EVCS
             Data.flag = true;
         }
         /// <summary>
-        /// example
+        /// example：解包
+        /// 反序列化设备核心数据
         /// </summary>
-        /// <param name="package"></param>
+        /// <param name="package">Package包</param>
         void NewDeviceData(Package package)
         {
             DeviceData data = new DeviceData();          
@@ -201,6 +252,10 @@ namespace EVCS
                Data.flag = true;
             }            
         }
+        /// <summary>
+        /// example:更新核心数据中的信息
+        /// </summary>
+        /// <param name="package">Package包</param>
         void Updatemessage(Package package)
         {
             DeviceData data = new DeviceData();

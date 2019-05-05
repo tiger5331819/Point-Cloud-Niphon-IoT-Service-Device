@@ -7,6 +7,9 @@ using EVCS.PointCloudControl;
 
 namespace EVCS
 {
+    /// <summary>
+    /// 设备控制器
+    /// </summary>
     class PointCloudDeviceC
     {
         Special cloud;
@@ -28,7 +31,7 @@ namespace EVCS
         {
             cloud = s;
             user = null;
-            data = PointCloud_EVCS_Core.CreatDeviceData(ref socket, package);
+            data = PointCloud_EVCS_Core.CreatDeviceData(ref socket, package);//DI
             MailBox = new DeviceMailBox(ref data);
 
             Thread check = new Thread(CreateThreadToCheckData);

@@ -8,14 +8,16 @@ using static System.Console;
 
 namespace EVCS
 {
+    /// <summary>
+    /// 服务器控制器
+    /// </summary>
     class PointCloudCC
     {
-        Special cloud;
-        public List<PointCloudDeviceC>DeviceC = new List<PointCloudDeviceC>(50);
-        List<PointCloudUserC>UserC = new List<PointCloudUserC>(50);
+        Special cloud;//总控制器映射
+        public List<PointCloudDeviceC>DeviceC = new List<PointCloudDeviceC>(50);//设备控制器表
+        List<PointCloudUserC>UserC = new List<PointCloudUserC>(50);//用户控制器表
         
         PointCloudCC cc;
-        string article;
 
         public PointCloudCC(ref Special c)
         {
@@ -24,10 +26,10 @@ namespace EVCS
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
             check.Start();
-            
-            shell();
-
         }
+        /// <summary>
+        /// 当设备或客户链接时，分配控制器
+        /// </summary>
         void CreateThreadToCheckData()
         {
             EventManager m = new EventManager();
@@ -57,15 +59,14 @@ namespace EVCS
                         if (package.message == Messagetype.ID)
                         {
                             PointCloudDeviceC deviceC= new PointCloudDeviceC(ref socket,ref package,ref cloud);
-
+                            DeviceC.Add(deviceC);
+                            //断线重连原型
                             //if (DeviceC.Exists(x => x.ID == deviceC.ID))
                             //{
                             //    int i = DeviceC.FindIndex(x => x.ID == deviceC.ID);
                             //    DeviceC[i].giveLive = true;
                             //}
                             //else
-
-                            DeviceC.Add(deviceC);
 
                             IPList iP = new IPList();
                             iP.ID = deviceC.ID;
@@ -75,7 +76,7 @@ namespace EVCS
                     }
                     m.SimulateNewEvent(cloud.Data.iplist);
                 }
-
+                //当设备或用户离开时，从链接表中移除相关控制器
                 int i = -1,j=-1;
                  i=DeviceC.FindIndex(x => x.giveLive == false);
                 j = UserC.FindIndex(x => x.data.Live == false);
@@ -83,62 +84,6 @@ namespace EVCS
                 if (j != -1) {UserC[j].Unregister(m); UserC.RemoveAt(j); }
                 Thread.Sleep(100);
             }
-
         }
-
-        public void shell()
-        {
-            while (true)
-            {
-                try
-                {
-                    article = Console.ReadLine();
-                    switch (article)
-                    {
-                        case "DeviceList":foreach (IPList r in cloud.Data.iplist) WriteLine(r.ID + " " + r.IP); break;
-                        case "UserList": foreach (IPList r in cloud.Data.UserList) WriteLine(r.ID + " " + r.IP); break;
-                        case "Select": Select(); break;
-                        default:break;
-                    }
-                    article = null;
-                }
-                catch (Exception ex)
-                {
-                    ErrorMessage.GetError(ex);
-                }
-
-            }
-        }
-
-        void Select()
-        {
-            
-            article = null;
-            article = ReadLine();
-
-            PointCloudDeviceC d = DeviceC.Find(x=>x.ID==article);
-            WriteLine(d.ID);
-
-            while(true)
-            {
-                article = null;
-                article = ReadLine();
-                switch(article)
-                {
-                    case "back":return;
-                    case "play":TODO(d,Codemode.play); break;
-                    case "monitor":TODO(d, Codemode.monitor);break;
-                    case "sendvolume": TODO(d, Codemode.sendvolume); break;
-                    case "stopsendvolume": TODO(d, Codemode.stopsendvolume); break;
-                    case "stop": TODO(d, Codemode.stop); break;
-                }
-            }
-
-        }
-        void TODO(PointCloudDeviceC Device,Codemode codemode)
-        {
-            Device.SendCode(codemode);
-        }
-
     }
 }

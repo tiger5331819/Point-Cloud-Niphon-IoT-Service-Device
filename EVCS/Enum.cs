@@ -4,6 +4,9 @@ using System.Text;
 
 namespace EVCS
 {
+    /// <summary>
+    /// 消息种类
+    /// </summary>
     public enum Messagetype
     {
         NULL = 0,
@@ -15,6 +18,9 @@ namespace EVCS
         package = 6,
         update=7
     }
+    /// <summary>
+    /// 用户命令
+    /// </summary>
     public enum Codemode
     {
         release = -1,

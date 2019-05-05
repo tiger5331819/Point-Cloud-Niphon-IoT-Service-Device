@@ -9,13 +9,19 @@ using System.IO;
 
 namespace EVCS
 {
+    /// <summary>
+    /// 当从服务端获得数据或指令时的工作类
+    /// </summary>
     public class DataChangeTODO
     {
         Boolean sendvolumeflag=true;
         Device Data;
         Special cloud;
-
-
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="data">设备数据</param>
+        /// <param name="s">总控制端的映射</param>
         public DataChangeTODO(ref Device data,ref Special s)
         {
             Data = data;
@@ -24,6 +30,9 @@ namespace EVCS
             check.IsBackground = true; 
             check.Start();
         }
+        /// <summary>
+        /// 用于检测是否收到服务器的指令与数据，并怎么做
+        /// </summary>
         void CreateThreadToCheckData()
         {
             try
@@ -48,6 +57,9 @@ namespace EVCS
                 ErrorMessage.GetError(ex);
             }
         }
+        /// <summary>
+        /// 车辆信息更改
+        /// </summary>
         private void ChangeCarinfoMessage()
         {
             Data.volume.carName = Data.Newdata.volume.carName;
@@ -97,12 +109,13 @@ namespace EVCS
             }
             sendvolumeflag = true;
         }
+        /// <summary>
+        /// 服务端传达监控指令
+        /// </summary>
         private void monitor()
         {
             cloud.cloudnet.Send(DeviceNet.DeviceDataToPackage(Data.GetData(),Messagetype.carinfomessage));
         }
-
-
         private void OrderTODO()
         {
             switch (Data.codemode)
@@ -115,6 +128,9 @@ namespace EVCS
                 case Codemode.stop: DeviceDO.stop(ref cloud) ;break;
             }
         }
+        /// <summary>
+        /// 更新服务端上的设备核心数据
+        /// </summary>
         private void updateTODO()
         {
             cloud.cloudnet.Send(DeviceNet.DeviceDataToPackage(cloud.Data.GetData(), Messagetype.package));

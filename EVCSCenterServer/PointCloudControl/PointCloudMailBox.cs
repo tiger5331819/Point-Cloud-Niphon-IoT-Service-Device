@@ -9,6 +9,10 @@ using System.Threading.Tasks;
 
 namespace EVCS.PointCloudControl
 {
+    /// <summary>
+    /// 邮箱接口
+    /// 接口实现：接收数据、发送数据、打包序列化
+    /// </summary>
     public interface PointCloudMailBox
     {
         Task<bool> DOReceive();

@@ -61,21 +61,34 @@ using System.Threading;
 
 namespace EVCS
 {
-    public class Event:EventArgs
+    /// <summary>
+    /// 事件基类，所有的事件都继承与此
+    /// </summary>
+    public class Event : EventArgs
     {
         public int ID;
         public string TypeEvent;
-        public Event(int id,string s)
+        /// <summary>
+        /// Event类的构造函数
+        /// </summary>
+        /// <param name="id">Event的编号</param>
+        /// <param name="typeevent">Event的类别</param>
+        public Event(int id, string typeevent)
         {
             ID = id;
-            TypeEvent = s;
+            TypeEvent = typeevent;
         }
+        //临时使用
         public Event(string s)
         {
-            ID = 1;//临时变量
+            ID = 1;
             TypeEvent = s;
         }
     }
+    /// <summary>
+    /// 自定义序列化时所使用的程序集
+    /// Type BindToType函数重载与基类SerializationBinder
+    /// </summary>
     public class SerializableFind : SerializationBinder
     {
         public override Type BindToType(string assemblyName, string typeName)
@@ -84,10 +97,17 @@ namespace EVCS
             return Type.GetType(String.Format("{0}, {1}", typeName, assemblyName));
         }
     }
+    /// <summary>
+    /// 错误消息处理器
+    /// </summary>
     public class ErrorMessage
     {
         static string logPath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + "/日志文件";
-        static StreamWriter streamWriter = new StreamWriter(logPath + "/" + DateTime.Now.ToLongDateString().ToString() + "日志.txt", true);
+        static StreamWriter streamWriter;
+        /// <summary>
+        /// 获取错误并且将错误抛出与写入本地
+        /// </summary>
+        /// <param name="ex">异常</param>
         public static void GetError(Exception ex)
         {
             //创建日志文件夹
@@ -95,15 +115,20 @@ namespace EVCS
             {
                 Directory.CreateDirectory(logPath);
             }
-
+            streamWriter = new StreamWriter(logPath + "/" + DateTime.Now.ToLongDateString().ToString() + "日志.txt", true);
             streamWriter.WriteLine(DateTime.Now.ToString("HH:mm:ss     ") + ex.Message);
             Console.WriteLine(ex);
             streamWriter.WriteLine(ex.Source + ":" + ex.TargetSite);
             Console.WriteLine(ex.Source + ":" + ex.TargetSite);
             streamWriter.WriteLine(ex.StackTrace);
             Console.WriteLine(ex.StackTrace);
+            streamWriter.Dispose();
         }
     }
+    /// <summary>
+    /// 核心类IoT_Net
+    /// 负责网络功能实现的基类
+    /// </summary>
     public class IoT_Net
     {
         public string TypeNet;
@@ -113,13 +138,21 @@ namespace EVCS
         protected Boolean connectflag = true;
         public Queue<Socket> socketslist;
 
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="typenet">网络类别</param>
         public IoT_Net(string typenet)
         {
             TypeNet = typenet;
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             socketslist = new Queue<Socket>(50);
         }
-
+        /// <summary>
+        /// 发送数据
+        /// </summary>
+        /// <param name="package">打包好的Package</param>
+        /// <returns></returns>
         public bool Send(Package package)
         {
             try
@@ -141,7 +174,13 @@ namespace EVCS
             }
             return true;
         }
-        public bool Send(Package package, Socket s)
+        /// <summary>
+        /// 紧急发送
+        /// </summary>
+        /// <param name="package">打包好的Package</param>
+        /// <param name="s">需要使用的Socket端口</param>
+        /// <returns></returns>
+        public static bool Send(Package package, Socket s)
         {
             try
             {
@@ -162,6 +201,9 @@ namespace EVCS
             }
             return true;
         }
+        /// <summary>
+        /// 监听端口
+        /// </summary>
         protected void LinkBind()
         {
             //创建监听用的Socket
@@ -190,8 +232,8 @@ namespace EVCS
         }
         /// <summary>
         ///每有一个客户端连接，就会创建一个socket对象用于保存客户端传过来的套接字信息
+        ///如果有自定义方法，需要重载此方法。
         /// </summary>
-        /// <param name="o"></param>
         public virtual void AcceptInfo()
         {
             while (true)
@@ -200,10 +242,8 @@ namespace EVCS
                 {
                     //没有客户端连接时，accept会处于阻塞状态
                     Socket tSocket = socket.Accept();
-
                     string point = tSocket.RemoteEndPoint.ToString();
                     Console.WriteLine(point + "连接成功！");
-
                     socketslist.Enqueue(tSocket);
                 }
                 catch (Exception ex)
@@ -213,7 +253,9 @@ namespace EVCS
                 }
             }
         }
-
+        /// <summary>
+        /// 链接
+        /// </summary>
         protected void Connect()
         {
             Thread thread = new Thread(() =>
@@ -245,11 +287,18 @@ namespace EVCS
             thread.IsBackground = true;
             thread.Start();
         }
+        /// <summary>
+        ///如果使用Connect链接服务器，子类必须重载此函数用于接收服务端传来的数据
+        /// </summary>
         public virtual void ReceiveCommand()
         {
 
         }
-
+        /// <summary>
+        /// 基础服务：反序列化数据于Package包中
+        /// </summary>
+        /// <param name="buffer">Socket二进制流</param>
+        /// <returns>打包好的Package包</returns>
         static public Package BytesToPackage(byte[] buffer)
         {
             try
@@ -272,26 +321,39 @@ namespace EVCS
             }
         }
     }
-
+    /// <summary>
+    /// 核心类IoT_Data
+    /// 系统中所有数据的基类
+    /// </summary>
     [Serializable]
     public class IoT_Data
     {
         public string TypeData;
         public string TypeSystem;
         public string ID;
-
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="typedata">数据类型</param>
+        /// <param name="typesystem">所属系统</param>
+        /// <param name="id">类型ID，临时值为0</param>
         public IoT_Data(string typedata, string typesystem, string id = "0")
         {
             TypeData = typedata;
             TypeSystem = typesystem;
             ID = id;
         }
+        /// <summary>
+        /// 空构造函数
+        /// </summary>
         public IoT_Data()
         {
 
         }
     }
-
+    /// <summary>
+    /// 数据传输基本单位Package
+    /// </summary>
     [Serializable]
     public struct Package
     {

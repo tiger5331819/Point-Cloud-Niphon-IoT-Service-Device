@@ -11,9 +11,13 @@ using System.Diagnostics;
 
 namespace EVCS
 {
+    /// <summary>
+    /// EVCS设备端总控制器
+    /// </summary>
     public class Special
     {
-        decimal flagvolume = 0;
+        #region 体积与版本相关
+        decimal flagvolume = 0;//体积锁
         public decimal? Volume
         {
             get { return Data.volume.volume; }
@@ -34,8 +38,8 @@ namespace EVCS
             flagvolume = change;
             return true;
         }
-        string EVCSversion;
-        string Volumeversion;
+        string EVCSversion;//EVCS版本号
+        string Volumeversion;//体积计算程序版本号
         public string EVCSv
         {
             get { return EVCSversion; }
@@ -46,12 +50,14 @@ namespace EVCS
             get { return Volumeversion; }
             set { Volumeversion = value; }
         }
-        public Special cloud;
-        
+        #endregion
+
+        public Special cloud;      
         public DeviceNet cloudnet;
         public DataChangeTODO changeTODO;
         public Process process;
         public Device Data;
+
         public void loadcardata()
         {
             try
@@ -103,7 +109,9 @@ namespace EVCS
                 Console.WriteLine(e.Message);
             }
         }
-
+        /// <summary>
+        /// 构造函数
+        /// </summary>
         public Special()
         {
             this.Data = new Device("Device","PointCloud-EVCS");
@@ -118,7 +126,7 @@ namespace EVCS
             this.cloudnet = new DeviceNet(ref Data,"PointCloud-EVCS");
             this.changeTODO = new DataChangeTODO(ref Data,ref cloud);
         }
-        
+        #region 获取已配置好的自动管理时间属性
         public int gethour(int a, bool flag)
         {
             if (flag) return Convert.ToInt32(Data.configtime[a].beginhour);
@@ -151,6 +159,7 @@ namespace EVCS
             else Data.configtime[a].endminute = t;
             return true;
         }
+        #endregion
         public void loadxml()
         {
             //将XML文件加载进来
@@ -166,7 +175,6 @@ namespace EVCS
             EVCSversion = version.Value;
             version = Device.Element("Volumeversion");
             Volumeversion = version.Value;
-
             
             XElement NetLink = root.Element("NetLink");
             XElement IP = NetLink.Element("IP");
@@ -175,8 +183,6 @@ namespace EVCS
             Data.ip.IP = server.Value;
             XElement Point = IP.Element("serverpoint");
             Data.ip.Point = int.Parse(Point.Value);
-
-            
 
             //获取根元素下的所有子元素
             IEnumerable<XElement> ele = root.Elements("time");
@@ -214,9 +220,6 @@ namespace EVCS
             Device.Add(version);
 
             root.Add(Device);
-
-           
-
 
             XElement NetLink = new XElement("NetLink");
             XElement IP = new XElement("IP");

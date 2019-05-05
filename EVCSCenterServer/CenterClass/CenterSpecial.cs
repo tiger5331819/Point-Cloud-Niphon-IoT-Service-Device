@@ -13,25 +13,33 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace EVCS
 {
+    /// <summary>
+    /// 用于存储IP的元数据结构
+    /// </summary>
     [Serializable]
     public struct IPList
     {
         public string ID;
         public string IP;
     }
+    /// <summary>
+    /// EVCS服务端总控制器
+    /// </summary>
     public class Special
     {
         public ServerData Data;
-
+        #region EVCS版本号
         string EVCSServerVersion;
         public string EVCSv
         {
             get { return EVCSServerVersion; }
             set { EVCSServerVersion = value; }
         }
+        #endregion
+
         public Special cloud;
         public CenterServerNet cloudnet;
-     
+        
         /// <summary>
         /// 加载xml
         /// 子端结构体赋值为空

@@ -5,8 +5,17 @@ using System.Text;
 
 namespace EVCS
 {
+    /// <summary>
+    /// EVCS服务器核心服务
+    /// </summary>
     public class PointCloud_EVCS_Core
     {
+        /// <summary>
+        /// 创建设备数据并注入
+        /// </summary>
+        /// <param name="socket">Socket节点</param>
+        /// <param name="package">获得的数据包</param>
+        /// <returns></returns>
         public static Device CreatDeviceData(ref Socket socket,Package package)
         {
             Device data= CenterServerNet.NewDevice(package);
@@ -15,6 +24,12 @@ namespace EVCS
             data.socket = socket;
             return data;
         }
+        /// <summary>
+        /// 创建用户数据并注入
+        /// </summary>
+        /// <param name="socket">Socket节点</param>
+        /// <param name="package">获得的数据包</param>
+        /// <returns></returns>
         public static User CreatUserData(ref Socket socket,Package package)
         {
             User data = CenterServerNet.NewUser(package);
@@ -24,8 +39,9 @@ namespace EVCS
             return data;
         }
     }
-
-    
+    /// <summary>
+    /// 发送设备链接表事件，继承自事件基类
+    /// </summary>
     public class Send_IPList:Event
     {
         public List<IPList> iPLists;
@@ -34,6 +50,9 @@ namespace EVCS
             iPLists = iPL;
         }
     }
+    /// <summary>
+    /// 事件管理器
+    /// </summary>
     public class EventManager
     {
         public delegate void NewEventHandler(object sender, Send_IPList e);
