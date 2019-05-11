@@ -1,9 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <EVCS>
-  <server>
-      <ID>1</ID>
+  <Server>
+      <ID>服务器</ID>
       <EVCSServerVersion>v1.01</EVCSServerVersion>
-  </server>
+  </Server>
   <NetLink>
     <IP>
       <server>127.0.0.1</server>
