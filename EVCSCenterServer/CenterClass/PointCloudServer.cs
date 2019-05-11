@@ -162,7 +162,8 @@ namespace EVCS
         public UserData GetData()
         {
             UserData data = new UserData(this.TypeData, this.TypeSystem);
-            data.volume = this.volume;
+            data.ID = ID;
+            data.volume = volume;
             for (int i = 0; i < 3; i++)
             {
                 data.configtime[i] = this.configtime[i];
@@ -206,7 +207,7 @@ namespace EVCS
     /// </summary>
     public class ServerData:IoT_Data
     {
-        public List<IPList> iplist = new List<IPList>(200);//设备链接表
+        public List<IPList> DeviceList = new List<IPList>(200);//设备链接表
         public List<IPList> UserList = new List<IPList>(200);//用户链接表
         public NetIP ip;
         public ServerData(string typedata, string typesystem) :base(typedata,typesystem)
@@ -226,11 +227,12 @@ namespace EVCS
         /// </summary>
         /// <param name="data">服务端数据</param>
         /// <param name="s">服务端总控制映射</param>
-        public CenterServerNet(ref ServerData data,ref Special s):base("PointCloud-EVCS")
+        public CenterServerNet(ServerData data,Special s):base("PointCloud-EVCS")
         {
-            this.ip = IPAddress.Parse(data.ip.IP);
-            this.point = new IPEndPoint(ip, data.ip.Point);
-            this.cloud = s;
+            ip = IPAddress.Parse(data.ip.IP);
+            point = new IPEndPoint(ip, data.ip.Point);
+            cloud = s;
+
             Data = data;
             LinkBind();
         }
@@ -240,7 +242,7 @@ namespace EVCS
         /// <param name="messagetype">消息类型</param>
         /// <param name="ipl">设备链接表</param>
         /// <returns></returns>
-        static public Package CreatIPListToPackage(Messagetype messagetype,List<IPList>ipl)
+        static public Package CreatIPListToPackage(Messagetype messagetype,IPList[] ipl)
         {
             Package package = new Package();
             package.message = messagetype;

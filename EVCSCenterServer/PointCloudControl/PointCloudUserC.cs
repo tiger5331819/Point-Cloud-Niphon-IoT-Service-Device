@@ -13,25 +13,22 @@ namespace EVCS
     class PointCloudUserC
     {
         PointCloudCC cc;
-        public User data;
-        Special cloud;
-        PointCloudDeviceC deviceC;
-        PointCloudUserC userC;
+        User data;
+        PointCloudDeviceC deviceC=null;
         PointCloudMailBox MailBox;
+        EventManager manager;
         public string ID
         {
             get { return data.ID; }
         }
-        public PointCloudUserC(ref Socket socket, ref Package package, ref Special s,ref PointCloudCC c, EventManager m)
+        public PointCloudUserC(Socket socket,Package package,PointCloudCC c, EventManager m)
         {
-            cloud = s;
             cc = c;
-            deviceC = null;
-            userC = this;
-            data = PointCloud_EVCS_Core.CreatUserData(ref socket, package);
-            MailBox = new UserMailBox(ref data,s.Data.iplist);
-            MailBox.Send(CenterServerNet.CreatIPListToPackage(Messagetype.codeus, s.Data.iplist));
-            m.Event += new EventManager.NewEventHandler(sendiplist);//事件注册
+            data = PointCloud_EVCS_Core.CreatUserData(socket, package);
+            MailBox = new UserMailBox(data);
+
+            manager = m;
+            manager.IPLEvent += new EventManager.IPLHandler(sendiplist);//事件注册
 
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
@@ -54,10 +51,11 @@ namespace EVCS
             }
             Receive();
             while (data.Live)
-            { 
-                if (!data.Live) cloud.Data.iplist.Remove(new IPList() { ID = data.ID, IP = data.IP });
-                Thread.Sleep(400);
+            {
+                
+                Thread.Sleep(1000);
             }
+            manager.SimulateNewDataLiveEvent(data.TypeData, data.ID, false);
         }
         void orderTODO()
         {
@@ -70,30 +68,31 @@ namespace EVCS
         }
         void monitor(Codemode codemode)
         {
-
-           int i = cloud.Data.iplist.FindIndex(x => x.IP == data.DeviceID);
-           deviceC = cc.DeviceC[i];
-           deviceC.adduser(ref userC);
-           deviceC.order.Enqueue(codemode);
-            
+            deviceC = cc.FindDeviceC(data.DeviceID);
+            if (deviceC == null) { Console.WriteLine("没有此设备");return; }
+            deviceC.adduser(this);
+            deviceC.addorder(codemode);
         }
-        void release()
+        public void release(int flag=1)
         {
-            if (deviceC.removeuser()) { data.DeviceID = null;deviceC = null; }
-            else Console.WriteLine("user release error");
+            if(deviceC!=null)
+                if (flag==0||deviceC.removeuser()) { data.DeviceID = null;deviceC = null;Console.WriteLine("{0}:移除设备",data.ID); }
+                else Console.WriteLine("user can not release");
+            else Console.WriteLine("DeviceC is null");
         }
         void codemode(Codemode codemode)
         {
-            deviceC.order.Enqueue(codemode);
+            if (deviceC != null)
+                deviceC.addorder(codemode);
         }
         void updateTODO()
         {
-            deviceC.updatemessage(data.volume, data.configtime);
+            if (deviceC != null)
+                deviceC.updatemessage(data.volume, data.configtime);
         }
         public void UpdateVolume(volumecontrol v)
         {
             data.volume = v;
-
             if (SendMessage(Messagetype.volumepackage)) Console.WriteLine("发送成功给用户！");
             else Console.WriteLine("error！");
         }
@@ -102,18 +101,22 @@ namespace EVCS
             if (MailBox.Send(MailBox.DataToPackage(messagetype))) return true;
             else return false;
         }
+
+        /// <summary>
+        /// 发送设备列表事件
+        /// </summary>
+        /// <param name="o"></param>
+        /// <param name="e"></param>
         void sendiplist(object o,Send_IPList e)
         {
-            MailBox.Send(CenterServerNet.CreatIPListToPackage(Messagetype.codeus, cloud.Data.iplist));
-            Console.WriteLine("updatelist");
+            MailBox.Send(CenterServerNet.CreatIPListToPackage(Messagetype.codeus, e.iPLists));
         }
         /// <summary>
         /// 注销事件
         /// </summary>
-        /// <param name="m">事件管理器</param>
-        public void Unregister(EventManager m)
+        public void Unregister()
         {
-            m.Event -= new EventManager.NewEventHandler(sendiplist);
+            manager.IPLEvent -= new EventManager.IPLHandler(sendiplist);
         }
     }
 

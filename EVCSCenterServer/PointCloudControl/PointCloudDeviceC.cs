@@ -12,27 +12,20 @@ namespace EVCS
     /// </summary>
     class PointCloudDeviceC
     {
-        Special cloud;
         Device data;
-        PointCloudUserC user;
+        PointCloudUserC user=null;
         PointCloudMailBox MailBox;
-        public Queue<Codemode> order = new Queue<Codemode>();
+        Queue<Codemode> order = new Queue<Codemode>();
+        EventManager manager;
         public string ID
         {
             get { return data.ID; }
         }
-        public bool giveLive
+        public PointCloudDeviceC(Socket socket,Package package,EventManager m)
         {
-            get { return data.Live; }
-            set { data.Live = true; }
-        }
-
-        public PointCloudDeviceC(ref Socket socket,ref Package package,ref Special s)
-        {
-            cloud = s;
-            user = null;
-            data = PointCloud_EVCS_Core.CreatDeviceData(ref socket, package);//DI
-            MailBox = new DeviceMailBox(ref data);
+            data = PointCloud_EVCS_Core.CreatDeviceData(socket, package);//DI
+            MailBox = new DeviceMailBox(data);
+            manager = m;
 
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
@@ -54,7 +47,7 @@ namespace EVCS
                        case Messagetype.package: ChangeCarMessage(); break;
                     }
                 }
-                else {Thread.Sleep(100);  sum++; }
+                else {Thread.Sleep(500);  sum++; }
             }
             Receive();
             while (data.Live)
@@ -68,9 +61,8 @@ namespace EVCS
                 }
             }
             Console.WriteLine("data is dead");
-            cloud.Data.iplist.Remove(new IPList() { ID = data.ID, IP = data.IP });
+            manager.SimulateNewDataLiveEvent(data.TypeData, data.ID, false);
         }
-
         void ChangeCarMessage()
         {
             Console.WriteLine(data.ID);
@@ -82,37 +74,28 @@ namespace EVCS
                user.UpdateVolume(data.volume);
             }
         }
-        public bool adduser(ref PointCloudUserC d)
+        public bool adduser(PointCloudUserC d)
         {
             user = d;
-            Console.WriteLine(user.data.ID);
             return false;
         }
         public bool removeuser()
         {
-            try
-            {
-                user = null;
-                SendCode(Codemode.stopsendvolume);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-                return false;
-            }
-            return true;
+            user = null;
+            return SendCode(Codemode.stopsendvolume);
         }
-
+        public void userRelease()
+        {
+            if(user!=null)
+            {
+                user.release(0);
+            }
+        }
         public void updatemessage(volumecontrol newvolume,configtimexml[] newconfig)
         {
             data.volume.carName = newvolume.carName; data.configtime = newconfig;
             data.volume.carVolume = newvolume.carVolume;
             SendUpdate();
-        }
-       public bool SendMessage(Messagetype messagetype)
-        {
-            if (MailBox.Send(MailBox.DataToPackage(messagetype))) return true;
-            else return false;
         }
         public bool SendCode(Codemode code)
         {
@@ -129,6 +112,19 @@ namespace EVCS
             }
             if (MailBox.Send(MailBox.DataToPackage(messagetype))) return true;
             else return false;
+        }
+        public bool addorder(Codemode codemode)
+        {
+            try
+            {
+                order.Enqueue(codemode);
+                return true;
+            }
+            catch(Exception ex)
+            {
+                ErrorMessage.GetError(ex);
+                return false;
+            }
         }
     }
 }

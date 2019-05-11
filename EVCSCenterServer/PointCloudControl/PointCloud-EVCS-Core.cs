@@ -16,7 +16,7 @@ namespace EVCS
         /// <param name="socket">Socket节点</param>
         /// <param name="package">获得的数据包</param>
         /// <returns></returns>
-        public static Device CreatDeviceData(ref Socket socket,Package package)
+        public static Device CreatDeviceData(Socket socket,Package package)
         {
             Device data= CenterServerNet.NewDevice(package);
             data.IP = socket.RemoteEndPoint.ToString();
@@ -24,13 +24,7 @@ namespace EVCS
             data.socket = socket;
             return data;
         }
-        /// <summary>
-        /// 创建用户数据并注入
-        /// </summary>
-        /// <param name="socket">Socket节点</param>
-        /// <param name="package">获得的数据包</param>
-        /// <returns></returns>
-        public static User CreatUserData(ref Socket socket,Package package)
+        public static User CreatUserData(Socket socket,Package package)
         {
             User data = CenterServerNet.NewUser(package);
             data.IP = socket.RemoteEndPoint.ToString();
@@ -44,10 +38,22 @@ namespace EVCS
     /// </summary>
     public class Send_IPList:Event
     {
-        public List<IPList> iPLists;
-        public Send_IPList(List<IPList>iPL):base("IPList")
+        public IPList[] iPLists;
+        public Send_IPList(IPList[] iPL):base(1,"IPList")
         {
             iPLists = iPL;
+        }
+    }
+    public class DataLive : Event
+    {
+        public string ControlType;
+        public string ControlName;
+        public bool Live;
+        public DataLive(string type,string name,bool live):base(2,"DataLive")
+        {
+            ControlType = type;
+            ControlName = name;
+            Live = live;
         }
     }
     /// <summary>
@@ -55,16 +61,27 @@ namespace EVCS
     /// </summary>
     public class EventManager
     {
-        public delegate void NewEventHandler(object sender, Send_IPList e);
-        public event NewEventHandler Event;
-        public virtual void OnNewEvent(Send_IPList e)
+        public delegate void IPLHandler(object sender, Send_IPList e);
+        public delegate void DataLiveHandler(object sender, DataLive e);
+        public event DataLiveHandler DataLiveEvent;
+        public event IPLHandler IPLEvent;
+        public void OnIPLEvent(Send_IPList e)
         {
-            Event?.Invoke(this, e);
+            IPLEvent?.Invoke(this, e);
         }
-        public void SimulateNewEvent(List<IPList> iPL)
+        public void OnDataLiveEvent(DataLive e)
+        {
+            DataLiveEvent?.Invoke(this, e);
+        }
+        public void SimulateNewIPLEvent(IPList[] iPL)
         {
             Send_IPList e = new Send_IPList(iPL);
-            OnNewEvent(e);
+            OnIPLEvent(e);
+        }
+        public void SimulateNewDataLiveEvent(string type,string name,bool live)
+        {
+            DataLive e = new DataLive(type,name,live);
+            OnDataLiveEvent(e);
         }
     }
 }

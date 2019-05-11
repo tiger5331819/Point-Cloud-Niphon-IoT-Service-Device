@@ -10,7 +10,7 @@ namespace EVCS
         string article;
         Special cloud;
         PointCloudCC cc;
-        public PointCloud_EVCS_ServerView(ref Special s,ref PointCloudCC c)
+        public PointCloud_EVCS_ServerView(Special s,PointCloudCC c)
         {
             cloud = s;
             cc = c;
@@ -24,9 +24,10 @@ namespace EVCS
                     article = Console.ReadLine();
                     switch (article)
                     {
-                        case "DeviceList": foreach (IPList r in cloud.Data.iplist) WriteLine(r.ID + " " + r.IP); break;
-                        case "UserList": foreach (IPList r in cloud.Data.UserList) WriteLine(r.ID + " " + r.IP); break;
+                        case "DeviceList": foreach (IPList r in cloud.DeviceList) WriteLine(r.ID + " " + r.IP); break;
+                        case "UserList": foreach (IPList r in cloud.UserList) WriteLine(r.ID + " " + r.IP); break;
                         case "Select": Select(); break;
+                        case "exit":exit();return;
                         default: break;
                     }
                     article = null;
@@ -45,7 +46,7 @@ namespace EVCS
             article = null;
             article = ReadLine();
 
-            PointCloudDeviceC d = cc.DeviceC.Find(x => x.ID == article);
+            PointCloudDeviceC d = cc.FindDeviceC(article);
             WriteLine(d.ID);
 
             while (true)
@@ -63,6 +64,10 @@ namespace EVCS
                 }
             }
 
+        }
+        void exit()
+        {
+            cloud.writexml();
         }
         void TODO(PointCloudDeviceC Device, Codemode codemode)
         {

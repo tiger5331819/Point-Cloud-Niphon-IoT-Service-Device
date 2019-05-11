@@ -114,17 +114,17 @@ namespace EVCS
         /// </summary>
         public Special()
         {
-            this.Data = new Device("Device","PointCloud-EVCS");
-            loadxml();
-            loadcardata();
+           Data = new Device("Device","PointCloud-EVCS");
+           loadxml();
+           loadcardata();
             
-            cloud = this;
+           cloud = this;
         
            process = new Process();
            process.StartInfo.FileName = "体积计算 " +Volumev + ".exe";
 
-            this.cloudnet = new DeviceNet(ref Data,"PointCloud-EVCS");
-            this.changeTODO = new DataChangeTODO(ref Data,ref cloud);
+           cloudnet = new DeviceNet(Data,"PointCloud-EVCS");
+           changeTODO = new DataChangeTODO(Data,cloud);
         }
         #region 获取已配置好的自动管理时间属性
         public int gethour(int a, bool flag)
@@ -160,6 +160,7 @@ namespace EVCS
             return true;
         }
         #endregion
+        #region xml操作
         public void loadxml()
         {
             //将XML文件加载进来
@@ -243,6 +244,6 @@ namespace EVCS
             root.Add(time);
             root.Save("config.xml");
         }
-
+        #endregion
     }
 }

@@ -78,12 +78,6 @@ namespace EVCS
             ID = id;
             TypeEvent = typeevent;
         }
-        //临时使用
-        public Event(string s)
-        {
-            ID = 1;
-            TypeEvent = s;
-        }
     }
     /// <summary>
     /// 自定义序列化时所使用的程序集
