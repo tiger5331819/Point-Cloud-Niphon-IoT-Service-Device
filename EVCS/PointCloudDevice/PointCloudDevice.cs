@@ -145,7 +145,7 @@ namespace EVCS
         /// </summary>
         /// <param name="data">EVCS设备数据</param>
         /// <param name="typenet">网络类别</param>
-        public DeviceNet(ref Device data,string typenet):base(typenet)
+        public DeviceNet(Device data,string typenet):base(typenet)
         {
             ip = IPAddress.Parse(data.ip.IP);
             point = new IPEndPoint(ip, data.ip.Point);
@@ -210,9 +210,9 @@ namespace EVCS
                 }
                 catch (Exception ex)
                 {
-                    ErrorMessage.GetError(ex);
                     socket.Shutdown(SocketShutdown.Both);
                     socket.Close();
+                    ErrorMessage.GetError(ex);
                     connectflag = true;
                     break;
                 }

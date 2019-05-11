@@ -8,13 +8,13 @@ namespace EVCS
 {
     class DeviceDO
     {
-         static public void Play(ref Special cloud)
+         static public void Play(Special cloud)
         {            
             cloud.process.Start();
             Console.WriteLine(cloud.process.StartInfo.FileName + "  play");
             NewMain.Nform.cloud.Data.volume.Begintime = DateTime.Now.ToString();
         }
-        static public void stop(ref Special cloud)
+        static public void stop(Special cloud)
         {
             //数据保存数据库
              NewMain.Nform.cloud.Data.volume.Endtime = DateTime.Now.ToString();           

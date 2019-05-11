@@ -22,14 +22,16 @@ namespace EVCS
         /// </summary>
         /// <param name="data">设备数据</param>
         /// <param name="s">总控制端的映射</param>
-        public DataChangeTODO(ref Device data,ref Special s)
+        public DataChangeTODO(Device data,Special s)
         {
             Data = data;
             cloud = s;
+
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true; 
             check.Start();
         }
+        #region CreateThreadToCheckData()
         /// <summary>
         /// 用于检测是否收到服务器的指令与数据，并怎么做
         /// </summary>
@@ -57,6 +59,9 @@ namespace EVCS
                 ErrorMessage.GetError(ex);
             }
         }
+        #endregion
+
+        #region DO
         /// <summary>
         /// 车辆信息更改
         /// </summary>
@@ -105,6 +110,7 @@ namespace EVCS
                 catch (Exception ex)
                 {
                     ErrorMessage.GetError(ex);
+                    return;
                 }
             }
             sendvolumeflag = true;
@@ -124,8 +130,8 @@ namespace EVCS
                                          sendvolumeData.IsBackground = true; sendvolumeData.Start(); break;
                 case Codemode.monitor:monitor(); break;
                 case Codemode.stopsendvolume:sendvolumeflag=false;break;
-                case Codemode.play: DeviceDO.Play(ref cloud) ;break;
-                case Codemode.stop: DeviceDO.stop(ref cloud) ;break;
+                case Codemode.play: DeviceDO.Play(cloud) ;break;
+                case Codemode.stop: DeviceDO.stop(cloud) ;break;
             }
         }
         /// <summary>
@@ -136,6 +142,7 @@ namespace EVCS
             cloud.cloudnet.Send(DeviceNet.DeviceDataToPackage(cloud.Data.GetData(), Messagetype.package));
             Console.WriteLine("succeed");
         }
+        #endregion DO
     }
 }
     

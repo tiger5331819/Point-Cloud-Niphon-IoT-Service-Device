@@ -26,7 +26,7 @@ namespace EVCS.PointCloudControl
         Device Data = null;
 
         delegate void PackageToData(Package package);
-        public DeviceMailBox(ref Device d)
+        public DeviceMailBox( Device d)
         {
             socket = d.socket;
             Data = d;
@@ -178,11 +178,9 @@ namespace EVCS.PointCloudControl
     {
         Socket socket = null;
         User Data = null;
-        public List<IPList> iplist;
 
-        public UserMailBox(ref User d, List<IPList>ip)
+        public UserMailBox(User d)
         {
-            iplist = ip;
             socket = d.socket;
             Data = d;
         }
@@ -231,13 +229,8 @@ namespace EVCS.PointCloudControl
                 if (package.message == Messagetype.codeus)
                 {
                     string receive = Encoding.UTF8.GetString(package.data, 0, package.data.Length);
-                    if (receive == "-1")
-                    {
-                        Send(CenterServerNet.CreatIPListToPackage(Messagetype.codeus, iplist));
-                        Console.WriteLine("updatelist");
-                        return false;
-                    }
-                    else { Data.DeviceID = receive; return false; }
+                    Data.DeviceID = receive;
+                    return false;
                 }
                 else
                     switch (package.message)
@@ -267,8 +260,7 @@ namespace EVCS.PointCloudControl
                     ms.Flush();
                     ms.Position = 0;
                     BinaryFormatter bf = new BinaryFormatter();
-
-                    data = (User)bf.Deserialize(ms);
+                    data = (UserData)bf.Deserialize(ms);
                 }
                 switch(messagetype)
                 {
@@ -279,22 +271,18 @@ namespace EVCS.PointCloudControl
                         Data.volume = data.volume;break;
                     default:Console.WriteLine("Func:NewUserData.messagetype is null"); break;
                 }
-
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Func(NewUserData) error:" + ex.ToString());
             }
-
         }
-
         void NewCode(Package package)
         {
             Data.codemode = (Codemode)Convert.ToInt32(Encoding.UTF8.GetString(package.data, 0, package.data.Length));
             Data.messagetype = package.message;
             Console.WriteLine(Data.codemode);
         }
-
         public Package DataToPackage(Messagetype messagetype = Messagetype.package)
         {
             Package package = new Package();
@@ -322,7 +310,6 @@ namespace EVCS.PointCloudControl
             catch (Exception ex)
             {
                 ErrorMessage.GetError(ex);
-
             }
             return package;
         }

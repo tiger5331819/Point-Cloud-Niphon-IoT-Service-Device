@@ -14,15 +14,15 @@ namespace EVCS
     class PointCloudCC
     {
         Special cloud;//总控制器映射
-        public List<PointCloudDeviceC>DeviceC = new List<PointCloudDeviceC>(50);//设备控制器表
-        List<PointCloudUserC>UserC = new List<PointCloudUserC>(50);//用户控制器表
-        
+        List<PointCloudDeviceC> DeviceC = new List<PointCloudDeviceC>(50);//设备控制器表
+        List<PointCloudUserC> UserC = new List<PointCloudUserC>(50);//用户控制器表
         PointCloudCC cc;
-
-        public PointCloudCC(ref Special c)
+        EventManager m = new EventManager();
+        public PointCloudCC(Special c)
         {
             cloud = c;
             cc = this;
+
             Thread check = new Thread(CreateThreadToCheckData);
             check.IsBackground = true;
             check.Start();
@@ -32,7 +32,7 @@ namespace EVCS
         /// </summary>
         void CreateThreadToCheckData()
         {
-            EventManager m = new EventManager();
+            m.DataLiveEvent += new EventManager.DataLiveHandler(DisposeControl);
             while(true)
             {
                 Socket socket=null;
@@ -46,43 +46,56 @@ namespace EVCS
 
                     if (package.message == Messagetype.codeus)
                     {
-                        PointCloudUserC userC = new PointCloudUserC(ref socket, ref package, ref cloud, ref cc,m);
+                        PointCloudUserC userC = new PointCloudUserC(socket,package,cc,m);
                         UserC.Add(userC);
 
                         IPList iP = new IPList();
                         iP.ID = userC.ID;
                         iP.IP = socket.RemoteEndPoint.ToString();
-                        cloud.Data.UserList.Add(iP);
+                        cloud.IPmanager("Add","UserList", iP);
                     }
                     else
                     {
                         if (package.message == Messagetype.ID)
                         {
-                            PointCloudDeviceC deviceC= new PointCloudDeviceC(ref socket,ref package,ref cloud);
+                            PointCloudDeviceC deviceC= new PointCloudDeviceC(socket,package,m);
                             DeviceC.Add(deviceC);
-                            //断线重连原型
-                            //if (DeviceC.Exists(x => x.ID == deviceC.ID))
-                            //{
-                            //    int i = DeviceC.FindIndex(x => x.ID == deviceC.ID);
-                            //    DeviceC[i].giveLive = true;
-                            //}
-                            //else
 
                             IPList iP = new IPList();
                             iP.ID = deviceC.ID;
                             iP.IP = socket.RemoteEndPoint.ToString();
-                            cloud.Data.iplist.Add(iP);
+                            cloud.IPmanager("Add","DeviceList", iP);   
                         }
                     }
-                    m.SimulateNewEvent(cloud.Data.iplist);
+                    m.SimulateNewIPLEvent(cloud.DeviceList);                  
                 }
-                //当设备或用户离开时，从链接表中移除相关控制器
-                int i = -1,j=-1;
-                 i=DeviceC.FindIndex(x => x.giveLive == false);
-                j = UserC.FindIndex(x => x.data.Live == false);
-                if(i!=-1)DeviceC.RemoveAt(i);
-                if (j != -1) {UserC[j].Unregister(m); UserC.RemoveAt(j); }
                 Thread.Sleep(100);
+            }
+        }
+        public PointCloudDeviceC FindDeviceC(string DeviceID)
+        {
+            return DeviceC.Find(x=>x.ID==cloud.FindIp("DeviceList",DeviceID).ID);
+        }
+        void DisposeControl(object o,DataLive dataLive)
+        {
+            int i = -1;
+            if(dataLive.ControlType=="Device")
+            {
+                i = DeviceC.FindIndex(x => x.ID==dataLive.ControlName);
+                DeviceC[i].userRelease();
+                cloud.IPmanager("Remove", "DeviceList", cloud.FindIp("DeviceList", DeviceC[i].ID));
+                if (i != -1) DeviceC.RemoveAt(i);
+                Console.WriteLine("RemoveDevice");
+                m.SimulateNewIPLEvent(cloud.DeviceList);
+            }
+            if(dataLive.ControlType=="User")
+            {
+                i = UserC.FindIndex(x => x.ID == dataLive.ControlName);
+                UserC[i].release();
+                cloud.IPmanager("Remove", "UserList", cloud.FindIp("UserList", UserC[i].ID));
+                UserC[i].Unregister();
+                if (i != -1) UserC.RemoveAt(i);
+                Console.WriteLine("RemoveUser");
             }
         }
     }

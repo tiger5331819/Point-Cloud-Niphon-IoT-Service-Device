@@ -27,7 +27,9 @@ namespace EVCS
     /// </summary>
     public class Special
     {
-        public ServerData Data;
+        ServerData Data;
+        public IPList[] DeviceList {  get{return Data.DeviceList.ToArray();}  }
+        public IPList[] UserList { get { return Data.UserList.ToArray(); } }
         #region EVCS版本号
         string EVCSServerVersion;
         public string EVCSv
@@ -47,10 +49,36 @@ namespace EVCS
         /// </summary>
         public Special()
         {
-            this.Data = new ServerData("Server", "PointCloud-EVCS");
+            Data = new ServerData("Server", "PointCloud-EVCS");
             loadxml();   
             cloud = this;
-            this.cloudnet = new CenterServerNet(ref Data,ref cloud);
+            cloudnet = new CenterServerNet(Data,cloud);
+        }
+        public void IPmanager(string DoType,string Listname,IPList iP)
+        {
+            switch(DoType)
+            {
+                case "Add":switch(Listname)
+                       {
+                           case "UserList":Data.UserList.Add(iP); break;
+                           case "DeviceList":Data.DeviceList.Add(iP);break;
+                       }break;
+                case "Remove":switch(Listname)
+                    {
+                        case "UserList": Data.UserList.Remove(iP); break;
+                        case "DeviceList": Data.DeviceList.Remove(iP); break;
+                    }break;
+            }         
+        }
+        public IPList FindIp(string listname,string ID)
+        {
+            switch(listname)
+            {
+                case "DeviceList":return Data.DeviceList.Find(x => x.ID == ID);
+                case "UserList":return Data.UserList.Find(x => x.ID == ID);
+                default:return new IPList();
+            }
+            
         }
 
         public void loadxml()
@@ -90,7 +118,7 @@ namespace EVCS
             IP.SetElementValue("serverpoint", Data.ip.Point);
             NetLink.Add(IP);
             root.Add(NetLink);
-            root.Save("config.xml");
+            root.Save("Serverconfig.xml");
         }
 
     }

@@ -78,12 +78,6 @@ namespace EVCS
             ID = id;
             TypeEvent = typeevent;
         }
-        //临时使用
-        public Event(string s)
-        {
-            ID = 1;
-            TypeEvent = s;
-        }
     }
     /// <summary>
     /// 自定义序列化时所使用的程序集
@@ -115,7 +109,7 @@ namespace EVCS
             {
                 Directory.CreateDirectory(logPath);
             }
-            streamWriter= new StreamWriter(logPath + "/" + DateTime.Now.ToLongDateString().ToString() + "日志.txt", true);
+            streamWriter = new StreamWriter(logPath + "/" + DateTime.Now.ToLongDateString().ToString() + "日志.txt", true);
             streamWriter.WriteLine(DateTime.Now.ToString("HH:mm:ss     ") + ex.Message);
             Console.WriteLine(ex);
             streamWriter.WriteLine(ex.Source + ":" + ex.TargetSite);
