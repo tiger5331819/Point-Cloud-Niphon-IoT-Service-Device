@@ -107,7 +107,7 @@ namespace EVCS
     public class Device : DeviceData
     {
         public string IP=null;
-        public Boolean Live = false;
+        public bool Live = false;
         public Messagetype messagetype;
         public Codemode codemode;
         public Socket socket = null;
@@ -178,7 +178,7 @@ namespace EVCS
     {
         public string IP;
         public string DeviceID;
-        public Boolean Live = false;
+        public bool Live = false;
         public Socket socket = null;
         public Messagetype messagetype;
         public Codemode codemode;
@@ -221,17 +221,15 @@ namespace EVCS
     public class CenterServerNet:IoT_Net
     {
         ServerData Data;
-        Special cloud;
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="data">服务端数据</param>
         /// <param name="s">服务端总控制映射</param>
-        public CenterServerNet(ServerData data,Special s):base("PointCloud-EVCS")
+        public CenterServerNet(ServerData data):base("PointCloud-EVCS")
         {
             ip = IPAddress.Parse(data.ip.IP);
             point = new IPEndPoint(ip, data.ip.Point);
-            cloud = s;
 
             Data = data;
             LinkBind();

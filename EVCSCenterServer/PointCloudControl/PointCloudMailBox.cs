@@ -154,28 +154,6 @@ namespace EVCS.PointCloudControl
         }
         public delegate void PackageToData(Package package,Messagetype messagetype);
 
-        public bool Send(Package package)
-        {
-            try
-            {
-                byte[] bytes = null;
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    BinaryFormatter bf = new BinaryFormatter();
-                    bf.Serialize(ms, package);
-                    ms.Flush();
-                    bytes = ms.ToArray();
-                }
-                socket.Send(bytes, bytes.Length, 0);
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage.GetError(ex);
-                return false;
-            }
-            return true;
-        }
-
         public Task<bool> DOReceive()
         {
             return Task.Run<bool>(() => { return Receive(); });
@@ -184,7 +162,7 @@ namespace EVCS.PointCloudControl
         /// 用户信息接收
         /// </summary>
         /// <param name="o"></param>
-        public bool Receive()
+        bool Receive()
         {
             PackageToData packageToData = new PackageToData(NewUserData);
             //接受用户数据
