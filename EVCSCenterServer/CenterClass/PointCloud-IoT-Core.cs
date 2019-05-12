@@ -142,6 +142,11 @@ namespace EVCS
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             socketslist = new Queue<Socket>(50);
         }
+        public IoT_Net(Socket socket,string TypeNet)
+        {
+            this.socket = socket;
+            this.TypeNet = TypeNet;
+        }
         /// <summary>
         /// 发送数据
         /// </summary>

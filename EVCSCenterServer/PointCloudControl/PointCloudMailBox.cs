@@ -20,46 +20,19 @@ namespace EVCS.PointCloudControl
         Package DataToPackage(Messagetype messagetype = Messagetype.package);
     }
 
-    public class DeviceMailBox:PointCloudMailBox
+    public class DeviceMailBox:IoT_Net,PointCloudMailBox
     {
-        Socket socket=null;
         Device Data = null;
 
         delegate void PackageToData(Package package);
-        public DeviceMailBox( Device d)
+        public DeviceMailBox(Device d):base(d.socket,"PointCloud-EVCS")
         {
-            socket = d.socket;
             Data = d;
         }
-
-        public bool Send(Package package)
-        {
-            try
-            {
-                byte[] bytes = null;
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    BinaryFormatter bf = new BinaryFormatter();
-                    bf.Serialize(ms, package);
-                    ms.Flush();
-                    bytes = ms.ToArray();
-                }
-                socket.Send(bytes, bytes.Length, 0);
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage.GetError(ex);
-                return false;
-            }
-            return true;
-        }
-
         public Task<bool>DOReceive()
         {
             return Task.Run<bool>(() => { return Receive(); });
         }
-
-
         /// <summary>
         /// 设备信息接收
         /// </summary>
@@ -89,7 +62,6 @@ namespace EVCS.PointCloudControl
                     return false;
                 }
         }
-
         void NewDeviceData(Package package)
         {
             try
@@ -113,7 +85,6 @@ namespace EVCS.PointCloudControl
                 Console.WriteLine(ex.ToString());
             }
         }
-
         /// <summary>
         /// 更改体积等信息
         /// </summary>
@@ -140,7 +111,6 @@ namespace EVCS.PointCloudControl
             }
 
         }
-
         public Package DataToPackage(Messagetype messagetype = Messagetype.package)
         {
             Package package = new Package();
@@ -174,14 +144,12 @@ namespace EVCS.PointCloudControl
         }
     }
 
-    public class UserMailBox : PointCloudMailBox
+    public class UserMailBox :IoT_Net,PointCloudMailBox
     {
-        Socket socket = null;
         User Data = null;
 
-        public UserMailBox(User d)
+        public UserMailBox(User d):base(d.socket,"PointCloud-EVCS")
         {
-            socket = d.socket;
             Data = d;
         }
         public delegate void PackageToData(Package package,Messagetype messagetype);
